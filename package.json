@@ -1,0 +1,9 @@
+{
+  "name": "procgraph",
+  "main": "index.html",
+  "window": {
+    "width":   1024,
+    "height":   800,
+    "toolbar": false
+  }
+}

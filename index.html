@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Proc Graph</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="css/bootstrap-sortable.css">
+    <link rel="stylesheet" href="css/procgraph.css">
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="js/bootstrap-sortable.js"></script>
+    <script src="js/jquery.flot.min.js"></script>
+    <script src="js/jquery.flot.time.js"></script>
+  </head>
+  <body>
+    <div class="navbar navbar-inverse navbar-default navbar-fixed-top" role="navigation">
+      <div class="container">
+        <span class="glyphicon glyphicon-arrow-left" style="position: absolute; left: 10px; display: none;" id="backimg"></span>
+        <div class="navbar-header">
+          <a class="navbar-brand js-external-link" href="https://github.com/sni/procgraph/">ProcGraph</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 3px; overflow: hidden;">
+
+    <!-- PROC TABLE -->
+    <div class="panel panel-default" id="procpanel">
+      <div class="panel-heading">
+        Select Process to Graph
+        <div class="input-group input-group-sm" style="width:300px; float: right; top: -4px;">
+          <input type="text" class="form-control" placeholder="Filter" id='proctablefilter'>
+          <span id="proctablefilterclear" class="glyphicon glyphicon-remove-circle"></span>
+        </div>
+      </div>
+      <table class="table sortable table-condensed table-hover" id="proctable">
+        <thead>
+        <tr>
+          <th>Pid&nbsp;&nbsp;&nbsp;</th>
+          <th>User&nbsp;&nbsp;&nbsp;</th>
+          <th>Pr&nbsp;&nbsp;&nbsp;</th>
+          <th>Ni&nbsp;&nbsp;&nbsp;</th>
+          <th>Virt&nbsp;&nbsp;&nbsp;</th>
+          <th>Res&nbsp;&nbsp;&nbsp;</th>
+          <th>Shr&nbsp;&nbsp;&nbsp;</th>
+          <th>S&nbsp;&nbsp;&nbsp;</th>
+          <th data-defaultsort='desc'>%Cpu&nbsp;&nbsp;&nbsp;</th>
+          <th>%Mem&nbsp;&nbsp;&nbsp;</th>
+          <th>Time+&nbsp;&nbsp;&nbsp;</th>
+          <th>Command&nbsp;&nbsp;&nbsp;</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PROC GRAPH -->
+    <div id='tooltip'></div>
+    <table style="width: 100%; height: 100%; display: none;" id="graphtable">
+      <tbody>
+        <tr>
+          <td>
+            <div id="procgraph" style="height: 100%; width: 100%"></div>
+          </td>
+          <td style="width: 300px; vertical-align: top; padding-left: 5px; padding-right: 8px;">
+            <div class="panel panel-default">
+              <div class="panel-heading">Details</div>
+              <table class="table">
+                <tr><th>PID</th><td id='pid'></td></tr>
+                <tr><th>User</th><td id='user'></td></tr>
+                <tr><th>Priority</th><td id='prio'></td></tr>
+                <tr><th>Nice</th><td id='nice'></td></tr>
+                <tr><th>Virt</th><td id='virt'></td></tr>
+                <tr><th>Res</th><td id='res'></td></tr>
+                <tr><th>Shr</th><td id='shr'></td></tr>
+                <tr><th>S</th><td id='s'></td></tr>
+                <tr><th>%CPU</th><td id='cpu'></td></tr>
+                <tr><th>%MEM</th><td id='mem'></td></tr>
+                <tr><th>Time</th><td id='time'></td></tr>
+                <tr><th>Command</th><td id='command'></td></tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    </div>
+
+    <script src="js/procgraph.js"></script>
+  </body>
+</html>

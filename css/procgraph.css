@@ -1,0 +1,35 @@
+body, html {
+  height: 100%;
+}
+body { padding-top: 60px; }
+
+#proctable td, #proctable th {
+  white-space: nowrap;
+}
+
+.clickable:hover {
+  cursor: pointer;
+}
+
+#proctablefilterclear, #backimg {
+  position: absolute;
+  right: 5px;
+  top: 0;
+  bottom: 0;
+  height: 14px;
+  margin: auto;
+  font-size: 14px;
+  cursor: pointer;
+  color: #ccc;
+  z-index: 2;
+}
+
+#tooltip {
+  position: absolute;
+  display: none;
+  border: 1px solid #fdd;
+  padding: 2px;
+  background-color: #fee;
+  opacity: 0.80;
+  z-index: 100;
+}
