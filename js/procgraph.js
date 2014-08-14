@@ -31,7 +31,6 @@ function init() {
     }
   });
 
-
   update_proctable(parse_top_output);
   return;
 }
@@ -114,6 +113,7 @@ function update_proctable(callback, extra_options) {
 
 var plot, series, graph_interval, lastPid;
 var d1 = [], d2 = [], d3 = [], d4 = [];
+var graphVisibility = { virt: true, res: true, shr: true, cpu: true };
 function startGraphing(pid) {
   if(topChild) { topChild.kill(); }
   $('#procpanel').hide();
@@ -126,26 +126,31 @@ function startGraphing(pid) {
     d2 = [];
     d3 = [];
     d4 = [];
+    graphVisibility = { virt: true, res: true, shr: true, cpu: true };
   }
   lastPid = pid;
 
   var s1 = {
     label: "virt",
+    color: "#edc240",
     data: d1,
     yaxis: 2
   };
   var s2 = {
     label: "res",
+    color: "#afd8f8",
     data: d2,
     yaxis: 2
   };
   var s3 = {
     label: "shr",
+    color: "#cb4b4b",
     data: d3,
     yaxis: 2
   };
   var s4 = {
     label: "cpu",
+    color: "#4da74d",
     data: d4
   };
   var options = {
@@ -257,19 +262,46 @@ function graph_top_output(stdout) {
       $('#time').html(data[10]);
       $('#command').html(data[11]);
 
-      /* adjust cpu axis */
-      var newmax = Math.ceil(plot.getYAxes()[0].datamax / 100)*100;
-      plot.getOptions().yaxes[0].max=newmax;
+      /* check series visibility */
+      drawVisibleSeries(nextstep);
 
-      plot.setData(series);
-      plot.setupGrid();
-      plot.draw();
       return;
     }
     if(line.match(/^\s*PID\s+USER/)) {
       proc_started = true;
     }
   }
+}
+
+function adjustCpuAxisMaxValue() {
+  var newmax = Math.ceil(plot.getYAxes()[0].datamax / 100)*100;
+  if(newmax < 100) { newmax = 100; }
+  plot.getOptions().yaxes[0].max=newmax;
+}
+
+/* draw visible series */
+function drawVisibleSeries(nextstep) {
+  /* adjust cpu axis */
+  adjustCpuAxisMaxValue();
+
+  var tmpseries = [series[0], series[1], series[2], series[3]];
+  if(!graphVisibility['virt']) { tmpseries[0] = { label: "virt", color: '#FFFFFF', data: [[nextstep, undefined]] }; }
+  if(!graphVisibility['res'])  { tmpseries[1] = { label: "res",  color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['shr'])  { tmpseries[2] = { label: "shr",  color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['cpu'])  { tmpseries[3] = { label: "cpu",  color: '#FFFFFF', data: [] }; }
+
+  plot.setData(tmpseries);
+  plot.setupGrid();
+  plot.draw();
+
+  /* make legend boxes clickable */
+  $('.legendColorBox').click(function() {
+    graphVisibility[this.nextSibling.innerHTML] = !graphVisibility[this.nextSibling.innerHTML];
+    drawVisibleSeries(nextstep);
+    adjustCpuAxisMaxValue();
+    drawVisibleSeries(nextstep);
+  }).addClass("clickable");
+  $('TD.legendLabel').css({paddingLeft: "5px"});
 }
 
 /* support opening external urls in default browser */
