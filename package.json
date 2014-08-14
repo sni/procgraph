@@ -9,7 +9,7 @@
   "window": {
     "title":    "Proc Graph",
     "icon":     "resource/icon.png",
-    "toolbar":   false,
+    "toolbar":   true,
     "frame":      true,
     "width":     1024,
     "height":     800,

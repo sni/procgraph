@@ -1,5 +1,3 @@
 ## TODO ##
 
- * use single top call
- * put top calls in single function
  * catch window resize event and resize graph

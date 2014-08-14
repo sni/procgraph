@@ -7,6 +7,13 @@ body { padding-top: 60px; }
   white-space: nowrap;
 }
 
+#proctable {
+    table-layout: fixed;
+}
+#proctable td {
+  overflow: hidden;
+}
+
 .clickable:hover {
   cursor: pointer;
 }
@@ -32,4 +39,8 @@ body { padding-top: 60px; }
   background-color: #fee;
   opacity: 0.80;
   z-index: 100;
+}
+
+.error {
+  color: red;
 }

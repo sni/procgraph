@@ -1,20 +1,28 @@
-var sys  = require('sys')
-var exec = require('child_process').exec;
+var sys   = require('sys')
+var spawn = require('child_process').spawn;
 
-function parse_top_output(error, stdout, stderr) {
+var proc_started = false;
+var lastOutput = "";
+function parse_top_output(stdout) {
+  stdout = lastOutput + stdout;
   var lines = stdout.split(/\n/);
-  var proc_started = false;
-
-  // empty table first
-  $("#proctable td").parent().remove();
+  lastOutput = "";
 
   var filter = $('#proctablefilter').val();
 
   for(var i=0, len=lines.length; i<len; i++) {
     var line = lines[i];
+    line = line.replace(/^\s+/g, '');
+
+    if(line.match(/^\s*top\s*/)) {
+      proc_started = false;
+    }
+
     if(proc_started && !line.match(/^\s*$/) && (!filter || line.match(filter))) {
-      line = line.replace(/^\s+/g, '');
       var data = line.split(/\s+/g);
+      if(!data[11]) {
+        return;
+      }
       $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data[0]+')">'
                                     +'<td class="pid">'+data.shift()+'</td>'
                                     +'<td class="user">'+data.shift()+'</td>'
@@ -32,20 +40,47 @@ function parse_top_output(error, stdout, stderr) {
     }
     if(line.match(/^\s*PID\s+USER/)) {
       proc_started = true;
+      // empty table first
+      $("#proctable td").parent().remove();
     }
   }
   $.bootstrapSortable(true);
 }
 
-function update_proctable() {
-// TODO: start once without -n1 and add -d 1, then update constantly
-  exec("top -b -n 1 -w 1000 -c", parse_top_output);
+var topChild = false;
+function update_proctable(callback, extra_options) {
+  if(topChild) { topChild.kill(); }
+  var options = ['-b', '-w', '1000', '-c'];
+  if(extra_options) { options = options.concat(extra_options); }
+  topChild = spawn('top', options);
+  if(!topChild) {
+    console.log("failed to launch top");
+    topChild = false;
+    return;
+  }
+  topChild.stdout.setEncoding('utf8');
+  topChild.stdout.on('data', function (data) {
+    //console.log('stdout: ' + data);
+    callback(data.toString());
+  });
+  topChild.stderr.on('data', function (data) {
+    console.log('stderr: ' + data);
+    $("#proctable td").parent().remove();
+    $('#proctable tbody').append('<tr class="error">'
+                                +'<td colspan=11>'+data+'</td>'
+                                +'</tr>');
+  });
+  topChild.on('close', function (code) {
+    if(code != 0) {
+      console.log('child process exited with code ' + code);
+    }
+  });
 }
 
 var plot, series, graph_interval, lastPid;
 var d1 = [], d2 = [], d3 = [], d4 = [];
 function startGraphing(pid) {
-  clearInterval(procUpdateInterval);
+  if(topChild) { topChild.kill(); }
   $('#procpanel').hide();
   $('#graphtable').show();
   $('#backimg').show();
@@ -106,7 +141,7 @@ function startGraphing(pid) {
   };
   series = [s1, s2, s3, s4];
   plot = $.plot('#procgraph', series, options);
-  graph_interval = setInterval(updateGraph, 40, [pid]);
+  updateGraph(pid);
 
   /* graph hover */
   $("#procgraph").bind("plothover", function (event, pos, item) {
@@ -125,20 +160,29 @@ function startGraphing(pid) {
 }
 
 function updateGraph(pid) {
-// TODO: start once without -n1 and add -d 1, then update constantly
-  exec("top -b -n 1 -w 1000 -c -p "+pid, graph_top_output);
+  update_proctable(graph_top_output, ['-d', '0.5', '-p', pid]);
 }
 
-function graph_top_output(error, stdout, stderr) {
-  var proc_started = false;
-  var lines     = stdout.split(/\n/);
+function graph_top_output(stdout) {
+  stdout = lastOutput + stdout;
+  var lines = stdout.split(/\n/);
+  lastOutput = "";
+
   var date      = new Date();
   var timestamp = date.getTime();
   for(var i=0, len=lines.length; i<len; i++) {
     var line = lines[i];
+
+    if(line.match(/^\s*top\s*/)) {
+      proc_started = false;
+    }
+
     if(proc_started && !line.match(/^\s*$/)) {
       line = line.replace(/^\s+/g, '');
       var data = line.split(/\s+/g);
+      if(!data[11]) {
+        return;
+      }
       series[0].data.push([timestamp, Number(data[4])]); // virt
       series[1].data.push([timestamp, Number(data[5])]); // res
       series[2].data.push([timestamp, Number(data[6])]); // shr
@@ -166,8 +210,7 @@ function graph_top_output(error, stdout, stderr) {
   plot.draw();
 }
 
-update_proctable();
-var procUpdateInterval = setInterval(update_proctable, 5000);
+update_proctable(parse_top_output);
 
 /* add eventhandler for clear button */
 $("#proctablefilterclear").click(function() {
@@ -176,16 +219,15 @@ $("#proctablefilterclear").click(function() {
 
 /* add eventhandler for input field */
 $("#proctablefilter").keyup(function() {
-  update_proctable();
+  update_proctable(parse_top_output);
 });
 
 $("#backimg").click(function() {
   $('#procpanel').show();
   $('#graphtable').hide();
   $('#backimg').hide();
-  clearInterval(graph_interval);
-  update_proctable();
-  procUpdateInterval = setInterval(update_proctable, 5000);
+  if(topChild) { topChild.kill(); }
+  update_proctable(parse_top_output);
 });
 
 /* support opening external urls in default browser */
