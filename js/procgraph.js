@@ -1,5 +1,31 @@
 var sys   = require('sys')
 var spawn = require('child_process').spawn;
+var gui   = require('nw.gui');
+var win   = gui.Window.get();
+
+/* do everything needed to startup */
+function init() {
+  /* add eventhandler for clear button */
+  $("#proctablefilterclear").click(function() {
+    $("#proctablefilter").val('');
+  });
+
+  /* add eventhandler for input field */
+  $("#proctablefilter").keyup(function() {
+    update_proctable(parse_top_output);
+  });
+
+  $("#backimg").click(function() {
+    $('#procpanel').show();
+    $('#graphtable').hide();
+    $('#backimg').hide();
+    if(topChild) { topChild.kill(); }
+    update_proctable(parse_top_output);
+  });
+
+  update_proctable(parse_top_output);
+  return;
+}
 
 var proc_started = false;
 var lastOutput = "";
@@ -223,28 +249,7 @@ function graph_top_output(stdout) {
   plot.draw();
 }
 
-update_proctable(parse_top_output);
-
-/* add eventhandler for clear button */
-$("#proctablefilterclear").click(function() {
-  $("#proctablefilter").val('');
-});
-
-/* add eventhandler for input field */
-$("#proctablefilter").keyup(function() {
-  update_proctable(parse_top_output);
-});
-
-$("#backimg").click(function() {
-  $('#procpanel').show();
-  $('#graphtable').hide();
-  $('#backimg').hide();
-  if(topChild) { topChild.kill(); }
-  update_proctable(parse_top_output);
-});
-
 /* support opening external urls in default browser */
-var gui = require('nw.gui');
 function supportExternalLinks(event) {
   var href;
   var isExternal = false;
