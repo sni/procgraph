@@ -146,11 +146,15 @@ function startGraphing(pid) {
   /* graph hover */
   $("#procgraph").bind("plothover", function (event, pos, item) {
     if (item) {
-// TODO: format timestamp
-      var x = item.datapoint[0].toFixed(2),
-          y = item.datapoint[1].toFixed(2);
+      var x = new Date(item.datapoint[0]),
+          y = item.datapoint[1];
 
-      $("#tooltip").html(x + ": " + item.series.label + " = " + y)
+      var unit = '';
+      if(item.series.label == 'cpu') {
+        unit = '%';
+      }
+
+      $("#tooltip").html(x.toLocaleString() + ": " + item.series.label + " = " + y + unit)
                    .css({top: item.pageY+5, left: item.pageX+5})
                    .fadeIn(200);
     } else {
