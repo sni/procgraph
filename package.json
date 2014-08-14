@@ -1,9 +1,19 @@
+// see https://github.com/rogerwang/node-webkit/wiki/Manifest-format
 {
   "name": "procgraph",
+  "description": "Proc Graph plots resource usage of a single linux process.",
+  "version": "0.1.0",
+  "keywords": [ "graph", "process" ],
   "main": "index.html",
   "window": {
-    "width":   1024,
-    "height":   800,
-    "toolbar": false
+    "title":    "Proc Graph",
+    "icon":     "resource/icon.png",
+    "toolbar":   false,
+    "frame":      true,
+    "width":     1024,
+    "height":     800,
+    "position": "mouse",
+    "min_width":  400,
+    "min_height": 200
   }
 }
