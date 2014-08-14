@@ -169,6 +169,8 @@ function startGraphing(pid) {
           ],
     grid: {
       hoverable: true,
+    },selection: {
+      mode: "x"
     }
   };
   series = [s1, s2, s3, s4];
@@ -194,6 +196,26 @@ function startGraphing(pid) {
     } else {
       $("#tooltip").hide();
     }
+  });
+
+  /* enable zooming */
+  $("#procgraph").bind("plotselected", function (event, ranges) {
+    $.each(plot.getXAxes(), function(_, axis) {
+      var opts = axis.options;
+      opts.min = ranges.xaxis.from;
+      opts.max = ranges.xaxis.to;
+    });
+    plot.setupGrid();
+    plot.draw();
+    plot.clearSelection();
+  });
+  /* reset zoom on rightclick */
+  $("#procgraph").bind("contextmenu", function (event, pos, item) {
+    $.each(plot.getXAxes(), function(_, axis) {
+      var opts = axis.options;
+      opts.min = undefined;
+      opts.max = undefined;
+    });
   });
 }
 
