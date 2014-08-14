@@ -235,7 +235,6 @@ function graph_top_output(stdout) {
       var nextstep = timestamp - timestamp % 60000 + 60000;
       series[0].data.push([nextstep, undefined]);
 
-      i=len+1; // exit loop
       $('#pid').html(data[0]);
       $('#user').html(data[1]);
       $('#prio').html(data[2]);
@@ -248,14 +247,16 @@ function graph_top_output(stdout) {
       $('#mem').html(data[9]+" %");
       $('#time').html(data[10]);
       $('#command').html(data[11]);
+
+      plot.setData(series);
+      plot.setupGrid();
+      plot.draw();
+      return;
     }
     if(line.match(/^\s*PID\s+USER/)) {
       proc_started = true;
     }
   }
-  plot.setData(series);
-  plot.setupGrid();
-  plot.draw();
 }
 
 /* support opening external urls in default browser */
