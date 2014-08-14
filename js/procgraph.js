@@ -131,43 +131,35 @@ function startGraphing(pid) {
 
   var s1 = {
     label: "virt",
-    data: d1
+    data: d1,
+    yaxis: 2
   };
   var s2 = {
     label: "res",
-    data: d2
+    data: d2,
+    yaxis: 2
   };
   var s3 = {
     label: "shr",
-    data: d3
+    data: d3,
+    yaxis: 2
   };
   var s4 = {
     label: "cpu",
-    data: d4,
-    yaxis: 2
+    data: d4
   };
   var options = {
     xaxis: { mode: "time" },
-    yaxes: [ { // left size axis
-               tickFormatter: function(val, axis) {
-                val = val * 1024;
-                // value is in KiB initially
-                if(val > 1073741824)
-                  return (val / 1073741824).toFixed(1) + " GB";
-                else if (val > 1048576)
-                  return (val / 1048576).toFixed(axis.tickDecimals) + " MB";
-                else if (val > 1024)
-                  return (val / 1024).toFixed(axis.tickDecimals) + " KB";
-                else
-                  return val.toFixed(axis.tickDecimals) + " B";
-
-               }
-             },
-             { // right cpu axis
-               position: "right",
+    yaxes: [ { // left cpu axis
                min: 0,
                max: 100,
                tickFormatter: function(val, axis) { return(val+"%"); }
+              },
+              { // right size axis
+               min: 0,
+               tickFormatter: formatKiB,
+               position: "right",
+               alignTicksWithAxis: 1
               }
           ],
     grid: {
@@ -184,12 +176,14 @@ function startGraphing(pid) {
       var x = new Date(item.datapoint[0]),
           y = item.datapoint[1];
 
-      var unit = 'KiB';
+      var val;
       if(item.series.label == 'cpu') {
-        unit = '%';
+        val = y+'%';
+      } else {
+        val = formatKiB(y);
       }
 
-      $("#tooltip").html(x.toGMTString() + ": " + item.series.label + " = " + y + unit)
+      $("#tooltip").html(x.toGMTString() + ": " + item.series.label + " = " + val)
                    .css({top: item.pageY+5, left: item.pageX+5})
                    .fadeIn(200);
     } else {
@@ -197,6 +191,21 @@ function startGraphing(pid) {
     }
   });
 }
+
+/* format KiB value to human readable */
+function formatKiB(val) {
+  val = val * 1024;
+  // value is in KiB initially
+  if(val > 1073741824)
+    return (val / 1073741824).toFixed(1) + " GB";
+  else if (val > 1048576)
+    return (val / 1048576).toFixed(0) + " MB";
+  else if (val > 1024)
+    return (val / 1024).toFixed(0) + " KB";
+  else
+    return val.toFixed(0) + " B";
+}
+
 
 function updateGraph(pid) {
   update_proctable(graph_top_output, ['-d', '0.5', '-p', pid]);
@@ -239,14 +248,18 @@ function graph_top_output(stdout) {
       $('#user').html(data[1]);
       $('#prio').html(data[2]);
       $('#nice').html(data[3]);
-      $('#virt').html(data[4]);
-      $('#res').html(data[5]);
-      $('#shr').html(data[6]);
+      $('#virt').html(formatKiB(data[4])+" ("+data[4]+"KiB)");
+      $('#res').html(formatKiB(data[5])+" ("+data[5]+"KiB)");
+      $('#shr').html(formatKiB(data[6])+" ("+data[6]+"KiB)");
       $('#s').html(data[7]);
       $('#cpu').html(data[8]+" %");
       $('#mem').html(data[9]+" %");
       $('#time').html(data[10]);
       $('#command').html(data[11]);
+
+      /* adjust cpu axis */
+      var newmax = Math.ceil(plot.getYAxes()[0].datamax / 100)*100;
+      plot.getOptions().yaxes[0].max=newmax;
 
       plot.setData(series);
       plot.setupGrid();

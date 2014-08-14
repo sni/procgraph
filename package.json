@@ -11,8 +11,8 @@
     "icon":     "resource/icon.png",
     "toolbar":   true,
     "frame":      true,
-    "width":     1024,
-    "height":     800,
+    "width":     1030,
+    "height":     630,
     "position": "mouse",
     "min_width":  400,
     "min_height": 200
