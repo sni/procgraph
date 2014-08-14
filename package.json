@@ -16,5 +16,6 @@
     "position": "mouse",
     "min_width":  400,
     "min_height": 200
-  }
+  },
+  "chromium-args": "--disable-threaded-compositing"
 }
