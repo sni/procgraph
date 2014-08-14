@@ -1,5 +1,6 @@
-// see https://github.com/rogerwang/node-webkit/wiki/Manifest-format
 {
+  "__hint": "see https://github.com/rogerwang/node-webkit/wiki/Manifest-format",
+
   "name": "procgraph",
   "description": "Proc Graph plots resource usage of a single linux process.",
   "version": "0.1.0",
