@@ -225,7 +225,9 @@ function startGraphing(pid) {
     data: d4
   };
   var options = {
-    xaxis: { mode: "time" },
+    xaxis: { mode: "time",
+             timezone: "browser"
+    },
     yaxes: [ { // left cpu axis
                min: 0,
                max: 100,
@@ -261,7 +263,7 @@ function startGraphing(pid) {
         val = formatKiB(y);
       }
 
-      $("#tooltip").html(x.toGMTString() + ": " + item.series.label + " = " + val)
+      $("#tooltip").html(x + ": " + item.series.label + " = " + val)
                    .css({top: item.pageY+5, left: item.pageX+5})
                    .fadeIn(200);
     } else {
@@ -326,6 +328,7 @@ function graphTopOutput(stdout) {
 
   var date      = new Date();
   var timestamp = date.getTime();
+  var procFound = false;
   for(var i=0, len=lines.length; i<len; i++) {
     var data = parseTopOutput(lines[i]);
     if(data) {
@@ -358,13 +361,15 @@ function graphTopOutput(stdout) {
 
       /* check series visibility */
       drawVisibleSeries(nextstep);
-    } else {
-      /* reset details table */
-      var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
-      $(keys).each(function(i, key) {
-        $('#'+key).html('');
-      });
+      procFound = true;
     }
+  }
+  if(!procFound) {
+    /* reset details table */
+    var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
+    $(keys).each(function(i, key) {
+      $('#'+key).html('');
+    });
   }
 }
 
