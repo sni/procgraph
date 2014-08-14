@@ -47,6 +47,7 @@ function parse_top_output(stdout) {
   for(var i=0, len=lines.length; i<len; i++) {
     var line = lines[i];
     line = line.replace(/^\s+/g, '');
+    line = line.replace(/\s+$/g, '');
 
     if(line.match(/^\s*top\s*/)) {
       proc_started = false;
@@ -84,9 +85,9 @@ function parse_top_output(stdout) {
 var topChild = false;
 function update_proctable(callback, extra_options) {
   if(topChild) { topChild.kill(); }
-  var options = ['-b', '-w', '1000', '-c'];
+  var options = ['-b', '-c'];
   if(extra_options) { options = options.concat(extra_options); }
-  topChild = spawn('top', options);
+  topChild = spawn('top', options, {env: {'COLUMNS': 1000}});
   if(!topChild) {
     console.log("failed to launch top");
     topChild = false;
@@ -254,6 +255,7 @@ function graph_top_output(stdout) {
 
     if(proc_started && !line.match(/^\s*$/)) {
       line = line.replace(/^\s+/g, '');
+      line = line.replace(/\s+$/g, '');
       var data = line.split(/\s+/g);
       if(!data[11]) {
         return;
