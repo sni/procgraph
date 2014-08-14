@@ -20,8 +20,17 @@ function init() {
     $('#graphtable').hide();
     $('#backimg').hide();
     if(topChild) { topChild.kill(); }
+    lastPid = undefined;
     update_proctable(parse_top_output);
   });
+
+  win.on('resize', function() {
+    if(lastPid) {
+      plot.resize();
+      plot.draw();
+    }
+  });
+
 
   update_proctable(parse_top_output);
   return;

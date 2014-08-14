@@ -4,6 +4,7 @@ Changelog for procgraph
 next:
         - use single top spawn to update graph and top table
         - avoid useless flickering when updating graph
+        - resize graph on window resize
 
 0.1.0      Thu Aug 14 12:41:05 CEST 2014
         - initial release
