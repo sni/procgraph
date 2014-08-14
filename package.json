@@ -17,5 +17,9 @@
     "min_width":  400,
     "min_height": 200
   },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sni/procgraph.git"
+  },
   "chromium-args": "--disable-threaded-compositing"
 }
