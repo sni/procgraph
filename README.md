@@ -4,6 +4,12 @@ Proc Graph plots resource usage of a single linux process.
 
 ![Graph](resources/screenshots/graph.png)
 
+## Downloads
+
+* **v0.1.0**
+
+ * Linux: [64bit](https://github.com/sni/procgraph/releases/download/v0.1.0/procgraph-0.1.0.linux.x86_64.tar.gz)
+
 ## Requirements
 
 Currently only linux is supported because top is used to gather the required
@@ -13,7 +19,7 @@ data.
  * node-webkit
  * npm
 
-## Installation
+## Source Installation
 
 Install bootstrap and jquery via npm:
 
