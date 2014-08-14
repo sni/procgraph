@@ -101,8 +101,8 @@ function update_proctable(callback, extra_options) {
   topChild.stderr.on('data', function (data) {
     console.log('stderr: ' + data);
     $("#proctable td").parent().remove();
-    $('#proctable tbody').append('<tr class="error">'
-                                +'<td colspan=11>'+data+'</td>'
+    $('#proctable tbody').append('<tr>'
+                                +'<td colspan=12><pre class="error">%> top '+options.join(' ')+'<br>'+data+'</pre></td>'
                                 +'</tr>');
   });
   topChild.on('close', function (code) {
