@@ -33,6 +33,12 @@
           <input type="text" class="form-control" placeholder="Filter" id='proctablefilter'>
           <span id="proctablefilterclear" class="glyphicon glyphicon-remove-circle"></span>
         </div>
+        <div class="input-group input-group-sm" style="width:300px; float: right; top: -4px; padding-right: 40px;">
+          <input type="text" class="form-control" placeholder="user@host (remote host by ssh)" id='sshhost'>
+          <span class="input-group-btn">
+            <button class="btn btn-default" type="button" id="sshbtn">connect</button>
+          </span>
+        </div>
       </div>
       <table class="table sortable table-condensed table-hover" id="proctable">
         <thead>
@@ -67,8 +73,8 @@
           <td style="width: 300px; vertical-align: top; padding-left: 5px; padding-right: 8px;">
             <div class="panel panel-default">
               <div class="panel-heading"><b>Details</b></div>
-              <table class="table">
-                <tr><th>PID</th><td id='pid'></td></tr>
+              <table class="table" style="table-layout: fixed; width: 290px;">
+                <tr><th style="width: 75px;">PID</th><td id='pid'></td></tr>
                 <tr><th>User</th><td id='user'></td></tr>
                 <tr><th>Priority</th><td id='prio'></td></tr>
                 <tr><th>Nice</th><td id='nice'></td></tr>

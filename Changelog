@@ -2,6 +2,7 @@ Changelog for procgraph
 
 
 next:
+        - added ssh support (keys only)
         - added zooming to graph
         - make graph label clickable
         - use single top spawn to update graph and top table

@@ -10,6 +10,13 @@ function init() {
     $("#proctablefilter").val('');
     refilterTopTable('');
   });
+  $("#sshbtn").click(function() {
+    if($('#sshbtn').text() == "disconnect") {
+      $('#sshhost').val('');
+      $('#sshbtn').text('connect');
+    }
+    spawnTop(updateTopTable);
+  });
 
   /* add eventhandler for input field */
   $("#proctablefilter").keyup(function() {
@@ -124,12 +131,23 @@ function parseTopOutput(line) {
 }
 
 var topChild = false;
-function spawnTop(callback, extra_options) {
+function spawnTop(callback, extra_args) {
   if(topChild) { topChild.kill(); }
 
-  var options = ['-b', '-c'];
-  if(extra_options) { options = options.concat(extra_options); }
-  topChild = spawn('top', options, {env: {'COLUMNS': 1000}});
+  var ssh = $("#sshhost").val(), command = false, args = [], options = {};
+  if(ssh) {
+    /* remote top */
+    $('#sshbtn').text('disconnect');
+    args    = [ ssh, '-o', 'BatchMode=yes', 'COLUMNS=1000 top', '-b', '-c'];
+    command = 'ssh';
+  } else {
+    /* local top */
+    args     = ['-b', '-c'];
+    command = 'top';
+    options = {env: {'COLUMNS': 1000}};
+  }
+  if(extra_args) { args = args.concat(extra_args); }
+  topChild = spawn(command, args, options);
 
   if(!topChild) {
     console.log("failed to launch top");
@@ -145,7 +163,7 @@ function spawnTop(callback, extra_options) {
     console.log('stderr: ' + data);
     $("#proctable td").parent().remove();
     $('#proctable tbody').append('<tr>'
-                                +'<td colspan=12><pre class="error">%> top '+options.join(' ')+'<br>'+data+'</pre></td>'
+                                +'<td colspan=12><pre class="error">%> '+command+' '+args.join(' ')+'<br>'+data+'</pre></td>'
                                 +'</tr>');
   });
   topChild.on('close', function (code) {
@@ -164,7 +182,7 @@ function startGraphing(pid) {
   $('#graphtable').show();
   $('#backimg').show();
 
-  if(lastPid != undefined && lastPid != pid) {
+  if(lastPid == undefined || lastPid != pid) {
     // reset series
     d1 = [];
     d2 = [];
@@ -316,7 +334,8 @@ function graphTopOutput(stdout) {
       var nextstep = timestamp - timestamp % 60000 + 60000;
       series[0].data.push([nextstep, undefined]);
 
-      $('#pid').html(data.pid);
+      var ssh = $("#sshhost").val();
+      $('#pid').html(data.pid+(ssh ? ' (on '+ssh+')' : ''));
       $('#user').html(data.user);
       $('#prio').html(data.pr);
       $('#nice').html(data.ni);
