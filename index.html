@@ -29,15 +29,20 @@
     <div class="panel panel-default" id="procpanel">
       <div class="panel-heading">
         Select Process to Graph
-        <div class="input-group input-group-sm" style="width:300px; float: right; top: -4px;">
-          <input type="text" class="form-control" placeholder="Filter" id='proctablefilter'>
-          <span id="proctablefilterclear" class="glyphicon glyphicon-remove-circle"></span>
-        </div>
-        <div class="input-group input-group-sm" style="width:300px; float: right; top: -4px; padding-right: 40px;">
-          <input type="text" class="form-control" placeholder="user@host (remote host by ssh)" id='sshhost'>
-          <span class="input-group-btn">
-            <button class="btn btn-default" type="button" id="sshbtn">connect</button>
-          </span>
+        <div style="float: right;">
+          <table><tr><td>
+          <div class="input-group input-group-sm" style="width:300px; top: -4px; padding-right: 40px;">
+            <input type="text" class="form-control" placeholder="user@host (remote host by ssh)" id='sshhost'>
+            <span class="input-group-btn">
+              <button class="btn btn-default" type="button" id="sshbtn">connect</button>
+            </span>
+          </div>
+          </td><td>
+          <div class="input-group input-group-sm" style="width:300px; top: -4px;">
+            <input type="text" class="form-control" placeholder="Filter" id='proctablefilter'>
+            <span id="proctablefilterclear" class="glyphicon glyphicon-remove-circle"></span>
+          </div>
+          </td></tr></table>
         </div>
       </div>
       <table class="table sortable table-condensed table-hover" id="proctable">
