@@ -11,6 +11,7 @@ APPFILE=$(APPNAME)-$(VERSION).$(OS).$(SYSTEM)
 
 
 build: $(NWFILE)
+	@[ "x$(NWDIR)" != "x" ] || { echo; echo "could not find nw in path! cannot continue build"; echo; exit 1; }
 	cat $(NW) $(NWFILE) > $(APPNAME) && chmod +x $(APPNAME)
 	mkdir $(APPFILE)
 	mv $(APPNAME) $(APPFILE)/
@@ -26,8 +27,13 @@ clean:
 $(NWFILE): pack
 
 pack: clean
-	zip -9 -q -r ../$(NWFILE) *
-	mv ../$(NWFILE) .
+	rm -rf tmp
+	mkdir tmp
+	cp -r * tmp || echo -n
+	rm -rf tmp/tmp
+	sed -i -e 's/"toolbar":\s*true,/"toolbar":   false,/' tmp/package.json
+	cd tmp && zip -9 -q -r ../$(NWFILE) *
+	rm -rf tmp
 	@echo "$(NWFILE) created"
 
 nodemodules:
