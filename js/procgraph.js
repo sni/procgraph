@@ -8,20 +8,22 @@ function init() {
   /* add eventhandler for clear button */
   $("#proctablefilterclear").click(function() {
     $("#proctablefilter").val('');
+    refilterTopTable('');
   });
 
   /* add eventhandler for input field */
   $("#proctablefilter").keyup(function() {
-    update_proctable(parse_top_output);
+    refilterTopTable($("#proctablefilter").val());
   });
 
   $("#backimg").click(function() {
-    $('#procpanel').show();
-    $('#graphtable').hide();
-    $('#backimg').hide();
     if(topChild) { topChild.kill(); }
     lastPid = undefined;
-    update_proctable(parse_top_output);
+    $('#graphtable').hide();
+    $('#backimg').hide();
+    $("#tooltip").hide();
+    $('#procpanel').show();
+    spawnTop(updateTopTable);
   });
 
   win.on('resize', function() {
@@ -31,63 +33,104 @@ function init() {
     }
   });
 
-  update_proctable(parse_top_output);
+  spawnTop(updateTopTable);
   return;
 }
 
-var proc_started = false;
+/* filter top output */
+function refilterTopTable(filter) {
+  $('#proctable tbody tr').each(function(i, row) {
+    var line = row.getAttribute('alt');
+    if(!filter || line.match(filter)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
 var lastOutput = "";
-function parse_top_output(stdout) {
-  stdout = lastOutput + stdout;
-  var lines = stdout.split(/\n/);
+function updateTopTable(stdout) {
+  stdout     = lastOutput + stdout;
+  var lines  = stdout.split(/\n/);
   lastOutput = "";
 
   var filter = $('#proctablefilter').val();
 
   for(var i=0, len=lines.length; i<len; i++) {
-    var line = lines[i];
-    line = line.replace(/^\s+/g, '');
-    line = line.replace(/\s+$/g, '');
-
-    if(line.match(/^\s*top\s*/)) {
-      proc_started = false;
-    }
-
-    if(proc_started && !line.match(/^\s*$/) && (!filter || line.match(filter))) {
-      var data = line.split(/\s+/g);
-      if(!data[11]) {
-        return;
-      }
-      $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data[0]+')">'
-                                    +'<td class="pid">'+data.shift()+'</td>'
-                                    +'<td class="user">'+data.shift()+'</td>'
-                                    +'<td class="pr">'+data.shift()+'</td>'
-                                    +'<td class="ni">'+data.shift()+'</td>'
-                                    +'<td class="virt">'+data.shift()+'</td>'
-                                    +'<td class="res">'+data.shift()+'</td>'
-                                    +'<td class="shr">'+data.shift()+'</td>'
-                                    +'<td class="s">'+data.shift()+'</td>'
-                                    +'<td class="cpu">'+data.shift()+'</td>'
-                                    +'<td class="mem">'+data.shift()+'</td>'
-                                    +'<td class="time">'+data.shift()+'</td>'
-                                    +'<td class="command">'+data.join(' ')+'</td>'
+    var data = parseTopOutput(lines[i]);
+    if(data) {
+      var display = (!filter || data.line.match(filter)) ? '' : 'none';
+      $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data.pid+')" alt="'+data.line+'" style="display:'+display+';">'
+                                    +'<td class="pid">'+data.pid+'</td>'
+                                    +'<td class="user">'+data.user+'</td>'
+                                    +'<td class="pr">'+data.pr+'</td>'
+                                    +'<td class="ni">'+data.ni+'</td>'
+                                    +'<td class="virt">'+data.virt+'</td>'
+                                    +'<td class="res">'+data.res+'</td>'
+                                    +'<td class="shr">'+data.shr+'</td>'
+                                    +'<td class="s">'+data.s+'</td>'
+                                    +'<td class="cpu">'+data.cpu+'</td>'
+                                    +'<td class="mem">'+data.mem+'</td>'
+                                    +'<td class="time">'+data.time+'</td>'
+                                    +'<td class="command">'+data.command+'</td>'
                                     +'</tr>');
     }
-    if(line.match(/^\s*PID\s+USER/)) {
-      proc_started = true;
+    if(procRollover) {
       // empty table first
       $("#proctable td").parent().remove();
+      procRollover = false;
     }
   }
   $.bootstrapSortable(true);
 }
 
+/* parse single line from top output */
+var procStarted  = false;
+var procRollover = false;
+function parseTopOutput(line) {
+  line = line.replace(/^\s+/g, '');
+  line = line.replace(/\s+$/g, '');
+
+  if(line.match(/^\s*top\s*/)) {
+    procStarted = false;
+  }
+  if(procStarted && !line.match(/^\s*$/)) {
+    var data = line.split(/\s+/g);
+    if(!data[11]) {
+      return;
+    }
+    var hash     = {};
+    hash.line    = line;
+    hash.pid     = data.shift();
+    hash.user    = data.shift();
+    hash.pr      = data.shift();
+    hash.ni      = data.shift();
+    hash.virt    = normalizeMemVal(data.shift());
+    hash.res     = normalizeMemVal(data.shift());
+    hash.shr     = normalizeMemVal(data.shift());
+    hash.s       = data.shift();
+    hash.cpu     = data.shift();
+    hash.mem     = data.shift();
+    hash.time    = data.shift();
+    hash.command = data.join(' ');
+    return(hash);
+  }
+  if(line.match(/^\s*PID\s+USER/)) {
+    procStarted  = true;
+    procRollover = true;
+  }
+  return;
+}
+
 var topChild = false;
-function update_proctable(callback, extra_options) {
+function spawnTop(callback, extra_options) {
   if(topChild) { topChild.kill(); }
+
   var options = ['-b', '-c'];
   if(extra_options) { options = options.concat(extra_options); }
   topChild = spawn('top', options, {env: {'COLUMNS': 1000}});
+
   if(!topChild) {
     console.log("failed to launch top");
     topChild = false;
@@ -220,6 +263,17 @@ function startGraphing(pid) {
   });
 }
 
+/* normalize memory value */
+function normalizeMemVal(val) {
+  var m = String(val).match(/^(\d+)([a-z])$/);
+  if(m && m[1]) {
+    val = Number(m[1]);
+    if(m[2] == 'm') { val = val * 1024; }
+    if(m[2] == 'g') { val = val * 1024 * 1024; }
+  }
+  return(val);
+}
+
 /* format KiB value to human readable */
 function formatKiB(val) {
   val = val * 1024;
@@ -236,10 +290,10 @@ function formatKiB(val) {
 
 
 function updateGraph(pid) {
-  update_proctable(graph_top_output, ['-d', '0.5', '-p', pid]);
+  spawnTop(graphTopOutput, ['-d', '0.5', '-p', pid]);
 }
 
-function graph_top_output(stdout) {
+function graphTopOutput(stdout) {
   stdout = lastOutput + stdout;
   var lines = stdout.split(/\n/);
   lastOutput = "";
@@ -247,52 +301,38 @@ function graph_top_output(stdout) {
   var date      = new Date();
   var timestamp = date.getTime();
   for(var i=0, len=lines.length; i<len; i++) {
-    var line = lines[i];
-
-    if(line.match(/^\s*top\s*/)) {
-      proc_started = false;
-    }
-
-    if(proc_started && !line.match(/^\s*$/)) {
-      line = line.replace(/^\s+/g, '');
-      line = line.replace(/\s+$/g, '');
-      var data = line.split(/\s+/g);
-      if(!data[11]) {
-        return;
-      }
+    var data = parseTopOutput(lines[i]);
+    if(data) {
       /* remove pseudo entry */
       series[0].data.pop();
 
       /* add real data */
-      series[0].data.push([timestamp, Number(data[4])]); // virt
-      series[1].data.push([timestamp, Number(data[5])]); // res
-      series[2].data.push([timestamp, Number(data[6])]); // shr
-      series[3].data.push([timestamp, Number(data[8])]); // cpu
+      series[0].data.push([timestamp, data.virt]);  // virt
+      series[1].data.push([timestamp, data.res ]);  // res
+      series[2].data.push([timestamp, data.shr ]); // shr
+      series[3].data.push([timestamp, data.cpu ]); // cpu
 
       /* advance to next minute to remove flickering */
       var nextstep = timestamp - timestamp % 60000 + 60000;
       series[0].data.push([nextstep, undefined]);
 
-      $('#pid').html(data[0]);
-      $('#user').html(data[1]);
-      $('#prio').html(data[2]);
-      $('#nice').html(data[3]);
-      $('#virt').html(formatKiB(data[4])+" ("+data[4]+"KiB)");
-      $('#res').html(formatKiB(data[5])+" ("+data[5]+"KiB)");
-      $('#shr').html(formatKiB(data[6])+" ("+data[6]+"KiB)");
-      $('#s').html(data[7]);
-      $('#cpu').html(data[8]+" %");
-      $('#mem').html(data[9]+" %");
-      $('#time').html(data[10]);
-      $('#command').html(data[11]);
+      $('#pid').html(data.pid);
+      $('#user').html(data.user);
+      $('#prio').html(data.pr);
+      $('#nice').html(data.ni);
+      $('#virt').html(formatKiB(data.virt)+" ("+data.virt+"KiB)");
+      $('#res').html(formatKiB(data.res)+" ("+data.res+"KiB)");
+      $('#shr').html(formatKiB(data.shr)+" ("+data.shr+"KiB)");
+      $('#s').html(data.s);
+      $('#cpu').html(data.cpu+" %");
+      $('#mem').html(data.mem+" %");
+      $('#time').html(data.time);
+      $('#command').html(data.command);
 
       /* check series visibility */
       drawVisibleSeries(nextstep);
 
       return;
-    }
-    if(line.match(/^\s*PID\s+USER/)) {
-      proc_started = true;
     }
   }
 }
