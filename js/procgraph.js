@@ -149,12 +149,12 @@ function startGraphing(pid) {
       var x = new Date(item.datapoint[0]),
           y = item.datapoint[1];
 
-      var unit = '';
+      var unit = 'KiB';
       if(item.series.label == 'cpu') {
         unit = '%';
       }
 
-      $("#tooltip").html(x.toLocaleString() + ": " + item.series.label + " = " + y + unit)
+      $("#tooltip").html(x.toGMTString() + ": " + item.series.label + " = " + y + unit)
                    .css({top: item.pageY+5, left: item.pageX+5})
                    .fadeIn(200);
     } else {
@@ -187,10 +187,19 @@ function graph_top_output(stdout) {
       if(!data[11]) {
         return;
       }
+      /* remove pseudo entry */
+      series[0].data.pop();
+
+      /* add real data */
       series[0].data.push([timestamp, Number(data[4])]); // virt
       series[1].data.push([timestamp, Number(data[5])]); // res
       series[2].data.push([timestamp, Number(data[6])]); // shr
       series[3].data.push([timestamp, Number(data[8])]); // cpu
+
+      /* advance to next minute to remove flickering */
+      var nextstep = timestamp - timestamp % 60000 + 60000;
+      series[0].data.push([nextstep, undefined]);
+
       i=len+1; // exit loop
       $('#pid').html(data[0]);
       $('#user').html(data[1]);
