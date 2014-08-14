@@ -24,7 +24,7 @@ function init() {
   });
 
   $("#backimg").click(function() {
-    if(topChild) { topChild.kill(); }
+    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = undefined; }
     lastPid = undefined;
     $('#graphtable').hide();
     $('#backimg').hide();
@@ -48,10 +48,12 @@ function init() {
 function refilterTopTable(filter) {
   $('#proctable tbody tr').each(function(i, row) {
     var line = row.getAttribute('alt');
-    if(!filter || line.match(filter)) {
-      row.style.display = '';
-    } else {
-      row.style.display = 'none';
+    if(line) {
+      if(!filter || line.match(filter)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
     }
   });
 }
@@ -132,9 +134,13 @@ function parseTopOutput(line) {
 
 var topChild = false;
 function spawnTop(callback, extra_args) {
-  if(topChild) { topChild.kill(); }
+  if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = undefined; }
 
-  var ssh = $("#sshhost").val(), command = false, args = [], options = {};
+  var ssh     = $("#sshhost").val(),
+      command = false,
+      args    = [],
+      options = {},
+      fullcmd = '';
   if(ssh) {
     /* remote top */
     $('#sshbtn').text('disconnect');
@@ -148,7 +154,9 @@ function spawnTop(callback, extra_args) {
   }
   if(extra_args) { args = args.concat(extra_args); }
   topChild = spawn(command, args, options);
+  fullcmd  = command+' '+args.join(' ');
 
+  console.log("spawned["+topChild.pid+"]: "+fullcmd);
   if(!topChild) {
     console.log("failed to launch top");
     topChild = false;
@@ -163,12 +171,14 @@ function spawnTop(callback, extra_args) {
     console.log('stderr: ' + data);
     $("#proctable td").parent().remove();
     $('#proctable tbody').append('<tr>'
-                                +'<td colspan=12><pre class="error">%> '+command+' '+args.join(' ')+'<br>'+data+'</pre></td>'
+                                +'<td colspan=12><pre class="error">%>'+fullcmd+'<br>'+data+'</pre></td>'
                                 +'</tr>');
   });
   topChild.on('close', function (code) {
     if(code != 0) {
       console.log('child process exited with code ' + code);
+      $('#sshbtn').text('connect');
+      topChild = undefined;
     }
   });
 }
@@ -177,7 +187,6 @@ var plot, series, graph_interval, lastPid;
 var d1 = [], d2 = [], d3 = [], d4 = [];
 var graphVisibility = { virt: true, res: true, shr: true, cpu: true };
 function startGraphing(pid) {
-  if(topChild) { topChild.kill(); }
   $('#procpanel').hide();
   $('#graphtable').show();
   $('#backimg').show();
@@ -306,7 +315,6 @@ function formatKiB(val) {
     return val.toFixed(0) + " B";
 }
 
-
 function updateGraph(pid) {
   spawnTop(graphTopOutput, ['-d', '0.5', '-p', pid]);
 }
@@ -325,8 +333,8 @@ function graphTopOutput(stdout) {
       series[0].data.pop();
 
       /* add real data */
-      series[0].data.push([timestamp, data.virt]);  // virt
-      series[1].data.push([timestamp, data.res ]);  // res
+      series[0].data.push([timestamp, data.virt]); // virt
+      series[1].data.push([timestamp, data.res ]); // res
       series[2].data.push([timestamp, data.shr ]); // shr
       series[3].data.push([timestamp, data.cpu ]); // cpu
 
@@ -350,8 +358,12 @@ function graphTopOutput(stdout) {
 
       /* check series visibility */
       drawVisibleSeries(nextstep);
-
-      return;
+    } else {
+      /* reset details table */
+      var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
+      $(keys).each(function(i, key) {
+        $('#'+key).html('');
+      });
     }
   }
 }
