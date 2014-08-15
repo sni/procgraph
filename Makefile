@@ -19,7 +19,8 @@ pkg-linux: $(NWFILE)
 	cat $(NW) $(NWFILE) > $(APPNAME) && chmod +x $(APPNAME)
 	mkdir $(APPFILE)
 	mv $(APPNAME) $(APPFILE)/
-	cp $(NWDIR)/nw.pak $(NWDIR)/icudtl.dat $(APPFILE)/
+	cp $(NWDIR)/nw.pak $(APPFILE)/
+	! test -f $(NWDIR)/icudtl.dat || cp $(NWDIR)/icudtl.dat $(APPFILE)/
 	tar cf $(APPFILE).tar $(APPFILE)
 	rm -rf $(APPFILE)
 	gzip -9 $(APPFILE).tar
