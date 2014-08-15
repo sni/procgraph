@@ -12,9 +12,14 @@ Proc Graph plots resource usage of a single linux / osx process.
 
 ## Downloads
 
-* **v0.1.0**
+* **v0.2.0**
 
- * Linux: [64bit](https://github.com/sni/procgraph/releases/download/v0.1.0/procgraph-0.1.0.linux.x86_64.tar.gz)
+ * Linux: [32bit](https://github.com/sni/procgraph/releases/download/v0.2.0/procgraph-0.2.0.linux.i686.tar.gz) / [64bit](https://github.com/sni/procgraph/releases/download/v0.2.0/procgraph-0.2.0.linux.x86_64.tar.gz)
+ * MacOSX: [64bit](https://github.com/sni/procgraph/releases/download/v0.2.0/procgraph-0.2.0-osx.zip)
+
+* **old released**
+
+ * can be found in the [github release archive](https://github.com/sni/procgraph/releases)
 
 ## Requirements
 
