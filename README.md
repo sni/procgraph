@@ -1,8 +1,14 @@
 ## Proc Graph ##
 
-Proc Graph plots resource usage of a single linux process.
+Proc Graph plots resource usage of a single linux / osx process.
 
 ![Graph](resources/screenshots/graph.png)
+
+## Features
+
+ * graph resource usage
+ * zooming
+ * remote host support via ssh (keys only)
 
 ## Downloads
 
@@ -12,10 +18,10 @@ Proc Graph plots resource usage of a single linux process.
 
 ## Requirements
 
-Currently only linux is supported because top is used to gather the required
+Currently only linux and osx is supported because top is used to gather the required
 data.
 
- * linux
+ * linux / osx
  * node-webkit
  * npm
 

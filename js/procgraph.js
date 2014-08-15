@@ -24,7 +24,7 @@ function init() {
   });
 
   $("#backimg").click(function() {
-    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = undefined; }
+    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
     lastPid = undefined;
     $('#graphtable').hide();
     $('#backimg').hide();
@@ -38,6 +38,13 @@ function init() {
       plot.resize();
       plot.draw();
     }
+  });
+
+  /* clean up */
+  win.on('close', function() {
+    console.log("close");
+    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+    this.close(true);
   });
 
   spawnTop(updateTopTable);
@@ -101,29 +108,51 @@ function parseTopOutput(line) {
   line = line.replace(/^\s+/g, '');
   line = line.replace(/\s+$/g, '');
 
-  if(line.match(/^\s*top\s*/)) {
+  if(line.match(/^\s*top\s*/) || line.match(/^Processes:/)) {
     procStarted = false;
   }
   if(procStarted && !line.match(/^\s*$/)) {
     var data = line.split(/\s+/g);
-    if(!data[11]) {
-      return;
+    if(curSyntax == 0) {
+      if(!data[11]) {
+        return;
+      }
+      var hash     = {};
+      hash.line    = line;
+      hash.pid     = data.shift();
+      hash.user    = data.shift();
+      hash.pr      = data.shift();
+      hash.ni      = data.shift();
+      hash.virt    = normalizeMemVal(data.shift());
+      hash.res     = normalizeMemVal(data.shift());
+      hash.shr     = normalizeMemVal(data.shift());
+      hash.s       = data.shift();
+      hash.cpu     = data.shift();
+      hash.mem     = data.shift();
+      hash.time    = data.shift();
+      hash.command = data.join(' ');
+      return(hash);
     }
-    var hash     = {};
-    hash.line    = line;
-    hash.pid     = data.shift();
-    hash.user    = data.shift();
-    hash.pr      = data.shift();
-    hash.ni      = data.shift();
-    hash.virt    = normalizeMemVal(data.shift());
-    hash.res     = normalizeMemVal(data.shift());
-    hash.shr     = normalizeMemVal(data.shift());
-    hash.s       = data.shift();
-    hash.cpu     = data.shift();
-    hash.mem     = data.shift();
-    hash.time    = data.shift();
-    hash.command = data.join(' ');
-    return(hash);
+    if(curSyntax == 1) {
+      if(!data[8]) {
+        return;
+      }
+      var hash     = {};
+      hash.line    = line;
+      hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
+      hash.user    = data.shift();
+      hash.pr      = '';
+      hash.ni      = '';
+      hash.virt    = normalizeMemVal(data.shift());
+      hash.res     = normalizeMemVal(data.shift());
+      hash.shr     = normalizeMemVal(data.shift());
+      hash.s       = data.shift();
+      hash.cpu     = data.shift();
+      hash.mem     = normalizeMemVal(data.shift());
+      hash.time    = data.shift();
+      hash.command = data.join(' ');
+      return(hash);
+    }
   }
   if(line.match(/^\s*PID\s+USER/)) {
     procStarted  = true;
@@ -132,9 +161,18 @@ function parseTopOutput(line) {
   return;
 }
 
-var topChild = false;
-function spawnTop(callback, extra_args) {
-  if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = undefined; }
+var topChild = false, curSyntax = 0;
+function spawnTop(callback, interval, pid, altSyntax) {
+  $('#sshbtn').text('connect');
+  if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+  if(altSyntax == undefined) { altSyntax = 0; }
+  curSyntax = altSyntax;
+
+  var standardArgs = ['-b', '-c'];
+  if(altSyntax == 1) {
+    /* osx top is crappy */
+    standardArgs = ['-l', '0', '-stats', 'pid,user,vprvt,rprvt,kshrd,state,cpu,mem,time,command' ];
+  }
 
   var ssh     = $("#sshhost").val(),
       command = false,
@@ -144,15 +182,21 @@ function spawnTop(callback, extra_args) {
   if(ssh) {
     /* remote top */
     $('#sshbtn').text('disconnect');
-    args    = [ ssh, '-o', 'BatchMode=yes', 'COLUMNS=1000 top', '-b', '-c'];
+    args    = [ ssh, '-o', 'BatchMode=yes', 'COLUMNS=1000 top'];
     command = 'ssh';
   } else {
     /* local top */
-    args     = ['-b', '-c'];
     command = 'top';
     options = {env: {'COLUMNS': 1000}};
   }
-  if(extra_args) { args = args.concat(extra_args); }
+  args = args.concat(standardArgs);
+  if(altSyntax == 0) {
+    if(interval) { args.push('-d', interval); }
+    if(pid)      { args.push('-p', pid); }
+  }
+  if(altSyntax == 1) {
+    if(pid)      { args.push('-pid', pid); }
+  }
   topChild = spawn(command, args, options);
   fullcmd  = command+' '+args.join(' ');
 
@@ -168,6 +212,10 @@ function spawnTop(callback, extra_args) {
     callback(data.toString());
   });
   topChild.stderr.on('data', function (data) {
+    if(data.toString().match(/invalid option or syntax/)) {
+      spawnTop(callback, interval, pid, ++altSyntax);
+      return;
+    }
     console.log('stderr: ' + data);
     $("#proctable td").parent().remove();
     $('#proctable tbody').append('<tr>'
@@ -176,9 +224,7 @@ function spawnTop(callback, extra_args) {
   });
   topChild.on('close', function (code) {
     if(code != 0) {
-      console.log('child process exited with code ' + code);
-      $('#sshbtn').text('connect');
-      topChild = undefined;
+      console.log('['+this.pid+'] child process exited with code ' + code);
     }
   });
 }
@@ -294,7 +340,18 @@ function startGraphing(pid) {
 
 /* normalize memory value */
 function normalizeMemVal(val) {
-  var m = String(val).match(/^(\d+)([a-z])$/);
+  var m;
+
+  /* osx style */
+  m = String(val).match(/^[\+\-]?(\d+)([A-Z])[\+\-]?$/);
+  if(m) {
+    val = Number(m[1]);
+    if(m[2] == 'M') { val = val * 1024; }
+    if(m[2] == 'G') { val = val * 1024 * 1024; }
+  }
+
+  /* linux style */
+  m = String(val).match(/^(\d+)([a-z])$/);
   if(m && m[1]) {
     val = Number(m[1]);
     if(m[2] == 'm') { val = val * 1024; }
@@ -318,7 +375,7 @@ function formatKiB(val) {
 }
 
 function updateGraph(pid) {
-  spawnTop(graphTopOutput, ['-d', '0.5', '-p', pid]);
+  spawnTop(graphTopOutput, 0.5, pid);
 }
 
 function graphTopOutput(stdout) {
