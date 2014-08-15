@@ -53,10 +53,12 @@ function init() {
 
 /* filter top output */
 function refilterTopTable(filter) {
+  var pattern;
+  if(filter) { pattern = new RegExp(filter, 'i'); }
   $('#proctable tbody tr').each(function(i, row) {
     var line = row.getAttribute('alt');
     if(line) {
-      if(!filter || line.match(filter)) {
+      if(!pattern || line.match(pattern)) {
         row.style.display = '';
       } else {
         row.style.display = 'none';
@@ -72,11 +74,13 @@ function updateTopTable(stdout) {
   lastOutput = "";
 
   var filter = $('#proctablefilter').val();
+  var pattern;
+  if(filter) { pattern = new RegExp(filter, 'i'); }
 
   for(var i=0, len=lines.length; i<len; i++) {
     var data = parseTopOutput(lines[i]);
     if(data) {
-      var display = (!filter || data.line.match(filter)) ? '' : 'none';
+      var display = (!pattern || data.line.match(pattern)) ? '' : 'none';
       $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data.pid+')" alt="'+data.line+'" style="display:'+display+';">'
                                     +'<td class="pid">'+data.pid+'</td>'
                                     +'<td class="user">'+data.user+'</td>'
