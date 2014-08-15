@@ -1,10 +1,13 @@
-var sys   = require('sys')
-var spawn = require('child_process').spawn;
-var gui   = require('nw.gui');
-var win   = gui.Window.get();
+var sys     = require('sys')
+var spawn   = require('child_process').spawn;
+var gui     = require('nw.gui');
+var win     = gui.Window.get();
+var version = require('./package.json').version
 
 /* do everything needed to startup */
 function init() {
+  $('#version').text('v'+version);
+
   /* add eventhandler for clear button */
   $("#proctablefilterclear").click(function() {
     $("#proctablefilter").val('');
