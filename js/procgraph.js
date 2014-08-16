@@ -28,7 +28,8 @@ function init() {
 
   $("#backimg").click(function() {
     if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
-    lastPid = undefined;
+    lastPid    = undefined;
+    lastFilter = undefined;
     $('#graphtable').hide();
     $('#backimg').hide();
     $("#tooltip").hide();
@@ -36,8 +37,12 @@ function init() {
     spawnTop(updateTopTable);
   });
 
+  $("#filterbtn").click(function() {
+    startGraphing(undefined, $("#proctablefilter").val());
+  });
+
   win.on('resize', function() {
-    if(lastPid) {
+    if(lastPid || lastFilter) {
       plot.resize();
       plot.draw();
     }
@@ -169,7 +174,7 @@ function parseTopOutputLine(line) {
 }
 
 var topChild = false, curSyntax = 0;
-function spawnTop(callback, interval, pid, altSyntax) {
+function spawnTop(callback, interval, pid, altSyntax, filter) {
   $('#sshbtn').text('connect');
   if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
   if(altSyntax == undefined) { altSyntax = 0; }
@@ -221,7 +226,7 @@ function spawnTop(callback, interval, pid, altSyntax) {
   });
   topChild.stderr.on('data', function (data) {
     if(data.toString().match(/invalid option or syntax/)) {
-      spawnTop(callback, interval, pid, ++altSyntax);
+      spawnTop(callback, interval, pid, ++altSyntax, filter);
       return;
     }
     console.log('stderr: ' + data);
@@ -237,15 +242,23 @@ function spawnTop(callback, interval, pid, altSyntax) {
   });
 }
 
-var plot, series, graph_interval, lastPid;
+var plot, series, graph_interval, lastPid, lastFilter;
 var d1 = [], d2 = [], d3 = [], d4 = [];
 var graphVisibility = { virt: true, res: true, shr: true, cpu: true };
-function startGraphing(pid) {
+function startGraphing(pid, filter) {
   $('#procpanel').hide();
   $('#graphtable').show();
   $('#backimg').show();
 
-  if(lastPid == undefined || lastPid != pid) {
+  var reset = false;
+  if(pid && (lastPid == undefined || lastPid != pid)) {
+    reset = true;
+  }
+  if(filter && (lastFilter == undefined || lastFilter != filter)) {
+    reset = true;
+  }
+  if(reset) {
+    reset = false;
     // reset series
     d1 = [];
     d2 = [];
@@ -253,7 +266,8 @@ function startGraphing(pid) {
     d4 = [];
     graphVisibility = { virt: true, res: true, shr: true, cpu: true };
   }
-  lastPid = pid;
+  lastPid    = pid;
+  lastFilter = filter;
 
   var s1 = {
     label: "virt",
@@ -302,7 +316,7 @@ function startGraphing(pid) {
   };
   series = [s1, s2, s3, s4];
   plot = $.plot('#procgraph', series, options);
-  updateGraph(pid);
+  updateGraph(pid, filter);
 
   /* graph hover */
   $("#procgraph").bind("plothover", function (event, pos, item) {
@@ -382,8 +396,8 @@ function formatKiB(val) {
     return val.toFixed(0) + " B";
 }
 
-function updateGraph(pid) {
-  spawnTop(graphTopOutput, 0.5, pid);
+function updateGraph(pid, filter) {
+  spawnTop(graphTopOutput, 0.5, pid, undefined, filter);
 }
 
 function graphTopOutput(stdout) {
@@ -406,7 +420,9 @@ function graphTopOutput(stdout) {
       });
     }
 
-    for(var i=0, len=currentProcs.length; i<len; i++) {
+    var len=currentProcs.length;
+    if(len == 1) {
+      /* single process */
       var data = currentProcs[i];
       /* remove pseudo entry */
       series[0].data.pop();
@@ -435,8 +451,67 @@ function graphTopOutput(stdout) {
       $('#time').html(data.time);
       $('#command').html(data.command);
 
+      /* show required rows */
+      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().show();
+      });
+      var keys = ['filter'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().hide();
+      });
+
       /* check series visibility */
       drawVisibleSeries(nextstep);
+    } else {
+      /* multiple processes */
+      var pattern = new RegExp(lastFilter, 'i');
+      /* count totals */
+      var virt = 0, res = 0, shr = 0, cpu = 0, num = 0;
+      for(var i=0; i<len; i++) {
+        var data = currentProcs[i];
+        if(data.line.match(pattern)) {
+          virt += Number(data.virt);
+          res  += Number(data.res);
+          shr  += Number(data.shr);
+          cpu  += Number(data.cpu);
+          num++;
+        }
+      }
+
+      /* remove pseudo entry */
+      series[0].data.pop();
+
+      /* add real data */
+      series[0].data.push([timestamp, virt]); // virt
+      series[1].data.push([timestamp, res ]); // res
+      series[2].data.push([timestamp, shr ]); // shr
+      series[3].data.push([timestamp, cpu ]); // cpu
+
+      /* advance to next minute to remove flickering */
+      var nextstep = timestamp - timestamp % 60000 + 60000;
+      series[0].data.push([nextstep, undefined]);
+
+      $('#filter').html(lastFilter+' ('+num+' matches)');
+      $('#virt').html(formatKiB(virt)+" ("+virt+"KiB)");
+      $('#res').html(formatKiB(res)+" ("+res+"KiB)");
+      $('#shr').html(formatKiB(shr)+" ("+shr+"KiB)");
+      $('#cpu').html(cpu.toFixed(0)+" %");
+
+      /* hide not required rows */
+      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().hide();
+      });
+      /* show required rows */
+      var keys = ['filter'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().show();
+      });
+
+      /* check series visibility */
+      drawVisibleSeries(nextstep);
+
     }
     currentProcs = [];
     procRollover = false;

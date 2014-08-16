@@ -1,5 +1,7 @@
 Changelog for procgraph
 
+next:
+        - aggregrate multiple processes into one graph
 
 0.2.0   Fri Aug 15 15:18:27 CEST 2014
         - added osx support
