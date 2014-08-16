@@ -81,8 +81,13 @@ function updateTopTable(stdout) {
   if(filter) { pattern = new RegExp(filter, 'i'); }
 
   for(var i=0, len=lines.length; i<len; i++) {
-    var data = parseTopOutput(lines[i]);
-    if(data) {
+    parseTopOutputLine(lines[i]);
+  }
+  if(procRollover) {
+    // empty table first
+    $("#proctable td").parent().remove();
+    for(var i=0, len=currentProcs.length; i<len; i++) {
+      var data = currentProcs[i];
       var display = (!pattern || data.line.match(pattern)) ? '' : 'none';
       $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data.pid+')" alt="'+data.line+'" style="display:'+display+';">'
                                     +'<td class="pid">'+data.pid+'</td>'
@@ -99,19 +104,17 @@ function updateTopTable(stdout) {
                                     +'<td class="command">'+data.command+'</td>'
                                     +'</tr>');
     }
-    if(procRollover) {
-      // empty table first
-      $("#proctable td").parent().remove();
-      procRollover = false;
-    }
+    procRollover = false;
+    currentProcs = [];
+    $.bootstrapSortable(true);
   }
-  $.bootstrapSortable(true);
 }
 
 /* parse single line from top output */
 var procStarted  = false;
 var procRollover = false;
-function parseTopOutput(line) {
+var currentProcs = [];
+function parseTopOutputLine(line) {
   line = line.replace(/^\s+/g, '');
   line = line.replace(/\s+$/g, '');
 
@@ -120,11 +123,9 @@ function parseTopOutput(line) {
   }
   if(procStarted && !line.match(/^\s*$/)) {
     var data = line.split(/\s+/g);
+    var hash = {};
     if(curSyntax == 0) {
-      if(!data[11]) {
-        return;
-      }
-      var hash     = {};
+      if(!data[11]) { return; }
       hash.line    = line;
       hash.pid     = data.shift();
       hash.user    = data.shift();
@@ -138,13 +139,11 @@ function parseTopOutput(line) {
       hash.mem     = data.shift();
       hash.time    = data.shift();
       hash.command = data.join(' ');
-      return(hash);
+      currentProcs.push(hash);
+      return;
     }
     if(curSyntax == 1) {
-      if(!data[8]) {
-        return;
-      }
-      var hash     = {};
+      if(!data[8]) { return; }
       hash.line    = line;
       hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
       hash.user    = data.shift();
@@ -158,7 +157,8 @@ function parseTopOutput(line) {
       hash.mem     = normalizeMemVal(data.shift());
       hash.time    = data.shift();
       hash.command = data.join(' ');
-      return(hash);
+      currentProcs.push(hash);
+      return;
     }
   }
   if(line.match(/^\s*PID\s+USER/)) {
@@ -173,7 +173,8 @@ function spawnTop(callback, interval, pid, altSyntax) {
   $('#sshbtn').text('connect');
   if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
   if(altSyntax == undefined) { altSyntax = 0; }
-  curSyntax = altSyntax;
+  curSyntax    = altSyntax;
+  currentProcs = [];
 
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
@@ -392,10 +393,21 @@ function graphTopOutput(stdout) {
 
   var date      = new Date();
   var timestamp = date.getTime();
-  var procFound = false;
+
   for(var i=0, len=lines.length; i<len; i++) {
-    var data = parseTopOutput(lines[i]);
-    if(data) {
+    parseTopOutputLine(lines[i]);
+  }
+  if(procRollover) {
+    if(currentProcs.length == 0) {
+    /* reset details table */
+      var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
+      $(keys).each(function(i, key) {
+        $('#'+key).html('');
+      });
+    }
+
+    for(var i=0, len=currentProcs.length; i<len; i++) {
+      var data = currentProcs[i];
       /* remove pseudo entry */
       series[0].data.pop();
 
@@ -425,15 +437,9 @@ function graphTopOutput(stdout) {
 
       /* check series visibility */
       drawVisibleSeries(nextstep);
-      procFound = true;
     }
-  }
-  if(!procFound) {
-    /* reset details table */
-    var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
-    $(keys).each(function(i, key) {
-      $('#'+key).html('');
-    });
+    currentProcs = [];
+    procRollover = false;
   }
 }
 
