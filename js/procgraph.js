@@ -132,7 +132,7 @@ function parseTopOutputLine(line) {
     var data = line.split(/\s+/g);
     var hash = {};
     if(curSyntax == 0) {
-      if(!data[11]) { return; }
+      if(!data[11]) { lastOutput += line; return; }
       hash.line    = line;
       hash.pid     = data.shift();
       hash.user    = data.shift();
@@ -150,7 +150,7 @@ function parseTopOutputLine(line) {
       return;
     }
     if(curSyntax == 1) {
-      if(!data[8]) { return; }
+      if(!data[8]) { lastOutput += line; return; }
       hash.line    = line;
       hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
       hash.user    = data.shift();
@@ -375,11 +375,14 @@ function normalizeMemVal(val) {
   }
 
   /* linux style */
-  m = String(val).match(/^(\d+)([a-z])$/);
+  m = String(val).match(/^([\d\.]+)([a-z])$/);
   if(m && m[1]) {
     val = Number(m[1]);
     if(m[2] == 'm') { val = val * 1024; }
     if(m[2] == 'g') { val = val * 1024 * 1024; }
+  }
+  if(!String(val).match(/^[\d\.]*$/)) {
+    throw new Error("normalizeMemVal: cannot handle: "+val);
   }
   return(val);
 }
@@ -394,8 +397,7 @@ function formatKiB(val) {
     return (val / 1048576).toFixed(0) + " MB";
   else if (val > 1024)
     return (val / 1024).toFixed(0) + " KB";
-  else
-    return val.toFixed(0) + " B";
+  return val.toFixed(0) + " B";
 }
 
 function updateGraph(pid, filter) {
