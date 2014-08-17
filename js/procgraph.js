@@ -1,5 +1,7 @@
 var sys     = require('sys')
-var spawn   = require('child_process').spawn;
+var child   = require('child_process');
+var spawn   = child.spawn;
+var exec    = child.exec;
 var gui     = require('nw.gui');
 var win     = gui.Window.get();
 var version = require('./package.json').version
@@ -50,8 +52,8 @@ function init() {
 
   /* clean up */
   win.on('close', function() {
-    console.log("close");
-    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+    /* make sure all top processes are done */
+    child = exec('ps -efl | grep top | grep '+process.pid+' | awk \'{ print $1 }\' | xargs kill');
     this.close(true);
   });
 
