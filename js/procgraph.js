@@ -58,7 +58,18 @@ function init() {
     this.close(true);
   });
 
-  spawnTop(updateTopTable);
+  console.log(gui.App.argv);
+  if(gui.App.argv.length > 0) {
+    var val = gui.App.argv[0];
+    if(String(val).match(/^\d+$/)) {
+      startGraphing(val);
+    } else {
+      $("#proctablefilter").val(val);
+      startGraphing(undefined, val);
+    }
+  } else {
+    spawnTop(updateTopTable);
+  }
   return;
 }
 
