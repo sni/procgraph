@@ -128,9 +128,9 @@ function parseTopOutputStream(streamdata, callback) {
           hash.user    = data.shift();
           hash.pr      = data.shift();
           hash.ni      = data.shift();
-          hash.virt    = normalizeMemVal(data.shift());
-          hash.res     = normalizeMemVal(data.shift());
-          hash.shr     = normalizeMemVal(data.shift());
+          hash.virt    = normalizeMemVal(data.shift(), line);
+          hash.res     = normalizeMemVal(data.shift(), line);
+          hash.shr     = normalizeMemVal(data.shift(), line);
           hash.s       = data.shift();
           hash.cpu     = data.shift();
           hash.mem     = data.shift();
@@ -147,7 +147,7 @@ function parseTopOutputStream(streamdata, callback) {
           hash.ni      = '';
           hash.s       = data.shift();
           hash.cpu     = data.shift();
-          hash.res     = normalizeMemVal(data.shift());
+          hash.res     = normalizeMemVal(data.shift(), line);
           hash.time    = data.shift();
           hash.virt    = '';
           hash.shr     = '';
@@ -239,8 +239,8 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
 }
 
 var plot, series, graph_interval, lastPid, lastFilter;
-var d1 = [], d2 = [], d3 = [], d4 = [];
-var graphVisibility = { virt: true, res: true, shr: true, cpu: true };
+var d1 = [], d2 = [], d3 = [], d4 = [], d5 = [];
+var graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
 function startGraphing(pid, filter) {
   $('#procpanel').hide();
   $('#graphtable').show();
@@ -250,7 +250,7 @@ function startGraphing(pid, filter) {
   if(pid && (lastPid == undefined || lastPid != pid)) {
     reset = true;
   }
-  if(filter && (lastFilter == undefined || lastFilter != filter)) {
+  if(filter != undefined && (lastFilter == undefined || lastFilter != filter)) {
     reset = true;
   }
   if(reset) {
@@ -260,7 +260,8 @@ function startGraphing(pid, filter) {
     d2 = [];
     d3 = [];
     d4 = [];
-    graphVisibility = { virt: true, res: true, shr: true, cpu: true };
+    d5 = [];
+    graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
   }
   lastPid    = pid;
   lastFilter = filter;
@@ -288,6 +289,11 @@ function startGraphing(pid, filter) {
     color: "#4da74d",
     data: d4
   };
+  var s5 = {
+    label: "matches",
+    color: "#9440ed",
+    data: d5
+  };
   var options = {
     xaxis: { mode: "time",
              timezone: "browser"
@@ -310,7 +316,7 @@ function startGraphing(pid, filter) {
       mode: "x"
     }
   };
-  series = [s1, s2, s3, s4];
+  series = [s1, s2, s3, s4, s5];
   plot = $.plot('#procgraph', series, options);
   updateGraph(pid, filter);
 
@@ -323,6 +329,8 @@ function startGraphing(pid, filter) {
       var val;
       if(item.series.label == 'cpu') {
         val = y+'%';
+      } else if(item.series.label == 'matches') {
+        val = '#' + y;
       } else {
         val = formatKiB(y);
       }
@@ -357,7 +365,7 @@ function startGraphing(pid, filter) {
 }
 
 /* normalize memory value */
-function normalizeMemVal(val) {
+function normalizeMemVal(val, line) {
   var m;
 
   /* osx style */
@@ -376,7 +384,7 @@ function normalizeMemVal(val) {
     if(m[2] == 'g') { val = val * 1024 * 1024; }
   }
   if(!String(val).match(/^[\d\.]*$/)) {
-    throw new Error("normalizeMemVal: cannot handle: "+val);
+    throw new Error("normalizeMemVal: cannot handle: "+val+"\n"+line);
   }
   return(val);
 }
@@ -394,15 +402,19 @@ function formatKiB(val) {
   return val.toFixed(0) + " B";
 }
 
+var redraws = 0;
 function updateGraph(pid, filter) {
+  redraws = 0;
   spawnTop(graphTopOutput, 0.5, pid, undefined, filter);
 }
 
 function graphTopOutput(data) {
   var date      = new Date();
   var timestamp = date.getTime();
+  var nextstep  = timestamp - timestamp % 60000 + 60000;
+  var redraw    = false;
+  var len       = data.length;
 
-  var len=data.length;
   if(len == 0) {
   /* reset details table */
     var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
@@ -424,7 +436,6 @@ function graphTopOutput(data) {
     series[3].data.push([timestamp, row.cpu ]); // cpu
 
     /* advance to next minute to remove flickering */
-    var nextstep = timestamp - timestamp % 60000 + 60000;
     series[0].data.push([nextstep, undefined]);
 
     var ssh = $("#sshhost").val();
@@ -441,20 +452,22 @@ function graphTopOutput(data) {
     $('#time').html(row.time);
     $('#command').html(row.command);
 
-    /* show required rows */
-    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command', 'virt', 'shr'];
-    $(keys).each(function(i, key) {
-      $('#'+key).parent().show();
-    });
-    var keys = ['filter'];
-    if(curSyntax == 1) { keys = keys.concat(['virt', 'shr', 'prio', 'nice', 'mem']); }
-    $(keys).each(function(i, key) {
-      $('#'+key).parent().hide();
-    });
+    if(redraws < 10) {
+      /* show required rows */
+      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command', 'virt', 'shr'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().show();
+      });
+      var keys = ['filter'];
+      if(curSyntax == 1) { keys = keys.concat(['virt', 'shr', 'prio', 'nice', 'mem']); }
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().hide();
+      });
+    }
 
-    /* check series visibility */
-    drawVisibleSeries(nextstep);
-  } else if(lastFilter != undefined) {
+    redraw = true;
+  }
+  else if(lastFilter != undefined) {
     /* multiple processes */
     var pattern = new RegExp(lastFilter, 'i');
     /* count totals */
@@ -478,9 +491,9 @@ function graphTopOutput(data) {
     series[1].data.push([timestamp, res ]); // res
     series[2].data.push([timestamp, shr ]); // shr
     series[3].data.push([timestamp, cpu ]); // cpu
+    series[4].data.push([timestamp, num ]); // matches
 
     /* advance to next minute to remove flickering */
-    var nextstep = timestamp - timestamp % 60000 + 60000;
     series[0].data.push([nextstep, undefined]);
 
     $('#filter').html(lastFilter+' ('+num+' matches)');
@@ -490,17 +503,32 @@ function graphTopOutput(data) {
     $('#cpu').html(cpu.toFixed(0)+" %");
 
     /* hide not required rows */
-    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
-    if(curSyntax == 1) { keys = keys.concat(['virt', 'shr']); }
-    $(keys).each(function(i, key) {
-      $('#'+key).parent().hide();
-    });
-    /* show required rows */
-    var keys = ['filter'];
-    $(keys).each(function(i, key) {
-      $('#'+key).parent().show();
-    });
+    if(redraws < 10) {
+      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+      if(curSyntax == 1) { keys = keys.concat(['virt', 'shr']); }
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().hide();
+      });
+      /* show required rows */
+      var keys = ['filter'];
+      $(keys).each(function(i, key) {
+        $('#'+key).parent().show();
+      });
+    }
 
+    redraw = true;
+  }
+
+  if(redraw) {
+    redraws++;
+    /* slow down graph updates on long running graphs */
+    if(     redraws <  600) {}
+    else if(redraws < 1800 && redraws %  3 != 0) { redraw = false; }
+    else if(redraws < 3600 && redraws %  5 != 0) { redraw = false; }
+    else if(redraws > 3600 && redraws % 10 != 0) { redraw = false; }
+  }
+
+  if(redraw) {
     /* check series visibility */
     drawVisibleSeries(nextstep);
   }
@@ -517,15 +545,20 @@ function drawVisibleSeries(nextstep) {
   /* adjust cpu axis */
   adjustCpuAxisMaxValue();
 
-  var tmpseries = [series[0], series[1], series[2], series[3]];
-  if(!graphVisibility['virt']) { tmpseries[0] = { label: "virt", color: '#FFFFFF', data: [[nextstep, undefined]] }; }
-  if(!graphVisibility['res'])  { tmpseries[1] = { label: "res",  color: '#FFFFFF', data: [] }; }
-  if(!graphVisibility['shr'])  { tmpseries[2] = { label: "shr",  color: '#FFFFFF', data: [] }; }
-  if(!graphVisibility['cpu'])  { tmpseries[3] = { label: "cpu",  color: '#FFFFFF', data: [] }; }
+  var tmpseries = [series[0], series[1], series[2], series[3], series[4]];
+  if(!graphVisibility['virt'])    { tmpseries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextstep, undefined]] }; }
+  if(!graphVisibility['res'])     { tmpseries[1] = { label: "res",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['shr'])     { tmpseries[2] = { label: "shr",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['cpu'])     { tmpseries[3] = { label: "cpu",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['matches']) { tmpseries[4] = { label: "matches", color: '#FFFFFF', data: [] }; }
 
   /* hide virt and shared on osx */
   if(curSyntax == 1) {
     tmpseries = [tmpseries[1], tmpseries[3]];
+  }
+
+  if(lastFilter == undefined) {
+    tmpseries.pop();
   }
 
   plot.setData(tmpseries);
