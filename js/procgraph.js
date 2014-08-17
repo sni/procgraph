@@ -109,7 +109,7 @@ function updateTopTable(data) {
 /* parse single line from top output */
 var lastOutput = "";
 function parseTopOutputStream(streamdata, callback) {
-  if(streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) {
+  if((streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) && !lastOutput.match(/^\s*$/)) {
     var procStarted = false;
     var currentProcs = [];
     var lines  = lastOutput.split(/\n+/g);
@@ -139,19 +139,19 @@ function parseTopOutputStream(streamdata, callback) {
           currentProcs.push(hash);
         }
         if(curSyntax == 1) {
-          if(!data[8]) { continue; }
+          if(!data[6]) { continue; }
           hash.line    = line;
           hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
           hash.user    = data.shift();
           hash.pr      = '';
           hash.ni      = '';
-          hash.virt    = normalizeMemVal(data.shift());
-          hash.res     = normalizeMemVal(data.shift());
-          hash.shr     = normalizeMemVal(data.shift());
           hash.s       = data.shift();
           hash.cpu     = data.shift();
-          hash.mem     = normalizeMemVal(data.shift());
+          hash.res     = normalizeMemVal(data.shift());
           hash.time    = data.shift();
+          hash.virt    = '';
+          hash.shr     = '';
+          hash.mem     = '';
           hash.command = data.join(' ');
           currentProcs.push(hash);
         }
@@ -176,7 +176,7 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
     /* osx top is crappy */
-    standardArgs = ['-l', '0', '-stats', 'pid,user,vprvt,rprvt,kshrd,state,cpu,mem,time,command' ];
+    standardArgs = ['-l', '0', '-stats', 'pid,user,state,cpu,mem,time,command', '-F', '-R' ];
   }
 
   var ssh     = $("#sshhost").val(),
@@ -200,6 +200,8 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
     if(pid)      { args.push('-p', pid); }
   }
   if(altSyntax == 1) {
+    interval = Math.round(interval); /* only supports integer */
+    if(interval) { args.push('-i', (interval < 1 ? 1 : interval)); }
     if(pid)      { args.push('-pid', pid); }
   }
 
@@ -440,18 +442,19 @@ function graphTopOutput(data) {
     $('#command').html(row.command);
 
     /* show required rows */
-    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command', 'virt', 'shr'];
     $(keys).each(function(i, key) {
       $('#'+key).parent().show();
     });
     var keys = ['filter'];
+    if(curSyntax == 1) { keys = keys.concat(['virt', 'shr', 'prio', 'nice', 'mem']); }
     $(keys).each(function(i, key) {
       $('#'+key).parent().hide();
     });
 
     /* check series visibility */
     drawVisibleSeries(nextstep);
-  } else {
+  } else if(lastFilter != undefined) {
     /* multiple processes */
     var pattern = new RegExp(lastFilter, 'i');
     /* count totals */
@@ -488,6 +491,7 @@ function graphTopOutput(data) {
 
     /* hide not required rows */
     var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+    if(curSyntax == 1) { keys = keys.concat(['virt', 'shr']); }
     $(keys).each(function(i, key) {
       $('#'+key).parent().hide();
     });
@@ -519,7 +523,13 @@ function drawVisibleSeries(nextstep) {
   if(!graphVisibility['shr'])  { tmpseries[2] = { label: "shr",  color: '#FFFFFF', data: [] }; }
   if(!graphVisibility['cpu'])  { tmpseries[3] = { label: "cpu",  color: '#FFFFFF', data: [] }; }
 
+  /* hide virt and shared on osx */
+  if(curSyntax == 1) {
+    tmpseries = [tmpseries[1], tmpseries[3]];
+  }
+
   plot.setData(tmpseries);
+  plot.resize();
   plot.setupGrid();
   plot.draw();
 
