@@ -35,6 +35,7 @@ function init() {
     $('#graphtable').hide();
     $('#backimg').hide();
     $("#tooltip").hide();
+    $("#proctable td").parent().remove();
     $('#procpanel').show();
     spawnTop(updateTopTable);
   });
@@ -77,101 +78,91 @@ function refilterTopTable(filter) {
   });
 }
 
-var lastOutput = "";
-function updateTopTable(stdout) {
-  stdout     = lastOutput + stdout;
-  var lines  = stdout.split(/\n/);
-  lastOutput = "";
-
+function updateTopTable(data) {
   var filter = $('#proctablefilter').val();
   var pattern;
   if(filter) { pattern = new RegExp(filter, 'i'); }
 
-  for(var i=0, len=lines.length; i<len; i++) {
-    parseTopOutputLine(lines[i]);
+  // empty table first
+  $("#proctable td").parent().remove();
+  for(var i=0, len=data.length; i<len; i++) {
+    var row = data[i];
+    var display = (!pattern || row.line.match(pattern)) ? '' : 'none';
+    $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+row.pid+')" alt="'+row.line+'" style="display:'+display+';">'
+                                  +'<td class="pid">'+row.pid+'</td>'
+                                  +'<td class="user">'+row.user+'</td>'
+                                  +'<td class="pr">'+row.pr+'</td>'
+                                  +'<td class="ni">'+row.ni+'</td>'
+                                  +'<td class="virt">'+row.virt+'</td>'
+                                  +'<td class="res">'+row.res+'</td>'
+                                  +'<td class="shr">'+row.shr+'</td>'
+                                  +'<td class="s">'+row.s+'</td>'
+                                  +'<td class="cpu">'+row.cpu+'</td>'
+                                  +'<td class="mem">'+row.mem+'</td>'
+                                  +'<td class="time">'+row.time+'</td>'
+                                  +'<td class="command">'+row.command+'</td>'
+                                  +'</tr>');
   }
-  if(procRollover) {
-    // empty table first
-    $("#proctable td").parent().remove();
-    for(var i=0, len=currentProcs.length; i<len; i++) {
-      var data = currentProcs[i];
-      var display = (!pattern || data.line.match(pattern)) ? '' : 'none';
-      $('#proctable tbody').append('<tr class="clickable" onclick="startGraphing('+data.pid+')" alt="'+data.line+'" style="display:'+display+';">'
-                                    +'<td class="pid">'+data.pid+'</td>'
-                                    +'<td class="user">'+data.user+'</td>'
-                                    +'<td class="pr">'+data.pr+'</td>'
-                                    +'<td class="ni">'+data.ni+'</td>'
-                                    +'<td class="virt">'+data.virt+'</td>'
-                                    +'<td class="res">'+data.res+'</td>'
-                                    +'<td class="shr">'+data.shr+'</td>'
-                                    +'<td class="s">'+data.s+'</td>'
-                                    +'<td class="cpu">'+data.cpu+'</td>'
-                                    +'<td class="mem">'+data.mem+'</td>'
-                                    +'<td class="time">'+data.time+'</td>'
-                                    +'<td class="command">'+data.command+'</td>'
-                                    +'</tr>');
-    }
-    procRollover = false;
-    currentProcs = [];
-    $.bootstrapSortable(true);
-  }
+  $.bootstrapSortable(true);
 }
 
 /* parse single line from top output */
-var procStarted  = false;
-var procRollover = false;
-var currentProcs = [];
-function parseTopOutputLine(line) {
-  line = line.replace(/^\s+/g, '');
-  line = line.replace(/\s+$/g, '');
-
-  if(line.match(/^\s*top\s*/) || line.match(/^Processes:/)) {
-    procStarted = false;
-  }
-  if(procStarted && !line.match(/^\s*$/)) {
-    var data = line.split(/\s+/g);
-    var hash = {};
-    if(curSyntax == 0) {
-      if(!data[11]) { lastOutput += line; return; }
-      hash.line    = line;
-      hash.pid     = data.shift();
-      hash.user    = data.shift();
-      hash.pr      = data.shift();
-      hash.ni      = data.shift();
-      hash.virt    = normalizeMemVal(data.shift());
-      hash.res     = normalizeMemVal(data.shift());
-      hash.shr     = normalizeMemVal(data.shift());
-      hash.s       = data.shift();
-      hash.cpu     = data.shift();
-      hash.mem     = data.shift();
-      hash.time    = data.shift();
-      hash.command = data.join(' ');
-      currentProcs.push(hash);
-      return;
+var lastOutput = "";
+function parseTopOutputStream(streamdata, callback) {
+  if(streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) {
+    var procStarted = false;
+    var currentProcs = [];
+    var lines  = lastOutput.split(/\n+/g);
+    lastOutput = "";
+    for(var i=0, len = lines.length; i<len; i++) {
+      var line = lines[i];
+      line = line.replace(/^\s+/g, '');
+      line = line.replace(/\s+$/g, '');
+      var data = line.split(/\s+/g);
+      if(procStarted) {
+        var hash = {};
+        if(curSyntax == 0) {
+          if(!data[11]) { continue; }
+          hash.line    = line;
+          hash.pid     = data.shift();
+          hash.user    = data.shift();
+          hash.pr      = data.shift();
+          hash.ni      = data.shift();
+          hash.virt    = normalizeMemVal(data.shift());
+          hash.res     = normalizeMemVal(data.shift());
+          hash.shr     = normalizeMemVal(data.shift());
+          hash.s       = data.shift();
+          hash.cpu     = data.shift();
+          hash.mem     = data.shift();
+          hash.time    = data.shift();
+          hash.command = data.join(' ');
+          currentProcs.push(hash);
+        }
+        if(curSyntax == 1) {
+          if(!data[8]) { continue; }
+          hash.line    = line;
+          hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
+          hash.user    = data.shift();
+          hash.pr      = '';
+          hash.ni      = '';
+          hash.virt    = normalizeMemVal(data.shift());
+          hash.res     = normalizeMemVal(data.shift());
+          hash.shr     = normalizeMemVal(data.shift());
+          hash.s       = data.shift();
+          hash.cpu     = data.shift();
+          hash.mem     = normalizeMemVal(data.shift());
+          hash.time    = data.shift();
+          hash.command = data.join(' ');
+          currentProcs.push(hash);
+        }
+      }
+      if(line.match(/^\s*PID\s+USER/)) {
+        procStarted  = true;
+      }
     }
-    if(curSyntax == 1) {
-      if(!data[8]) { lastOutput += line; return; }
-      hash.line    = line;
-      hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
-      hash.user    = data.shift();
-      hash.pr      = '';
-      hash.ni      = '';
-      hash.virt    = normalizeMemVal(data.shift());
-      hash.res     = normalizeMemVal(data.shift());
-      hash.shr     = normalizeMemVal(data.shift());
-      hash.s       = data.shift();
-      hash.cpu     = data.shift();
-      hash.mem     = normalizeMemVal(data.shift());
-      hash.time    = data.shift();
-      hash.command = data.join(' ');
-      currentProcs.push(hash);
-      return;
-    }
+    callback(currentProcs);
   }
-  if(line.match(/^\s*PID\s+USER/)) {
-    procStarted  = true;
-    procRollover = true;
-  }
+  lastOutput += streamdata;
   return;
 }
 
@@ -181,7 +172,6 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
   if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
   if(altSyntax == undefined) { altSyntax = 0; }
   curSyntax    = altSyntax;
-  currentProcs = [];
 
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
@@ -212,8 +202,10 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
   if(altSyntax == 1) {
     if(pid)      { args.push('-pid', pid); }
   }
-  topChild = spawn(command, args, options);
-  fullcmd  = command+' '+args.join(' ');
+
+  lastOutput = "";
+  topChild   = spawn(command, args, options);
+  fullcmd    = command+' '+args.join(' ');
 
   console.log("spawned["+topChild.pid+"]: "+fullcmd);
   if(!topChild) {
@@ -224,7 +216,7 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
   topChild.stdout.setEncoding('utf8');
   topChild.stdout.on('data', function (data) {
     //console.log('stdout: ' + data);
-    callback(data.toString());
+    parseTopOutputStream(data.toString(), callback);
   });
   topChild.stderr.on('data', function (data) {
     if(data.toString().match(/invalid option or syntax/)) {
@@ -404,121 +396,109 @@ function updateGraph(pid, filter) {
   spawnTop(graphTopOutput, 0.5, pid, undefined, filter);
 }
 
-function graphTopOutput(stdout) {
-  stdout = lastOutput + stdout;
-  var lines = stdout.split(/\n/);
-  lastOutput = "";
-
+function graphTopOutput(data) {
   var date      = new Date();
   var timestamp = date.getTime();
 
-  for(var i=0, len=lines.length; i<len; i++) {
-    parseTopOutputLine(lines[i]);
+  var len=data.length;
+  if(len == 0) {
+  /* reset details table */
+    var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
+    $(keys).each(function(i, key) {
+      $('#'+key).html('');
+    });
   }
-  if(procRollover) {
-    if(currentProcs.length == 0) {
-    /* reset details table */
-      var keys = ['user', 'prio', 'nice', 'virt', 'res', 'shr', 's', 'cpu', 'mem', 'time'];
-      $(keys).each(function(i, key) {
-        $('#'+key).html('');
-      });
-    }
 
-    var len=currentProcs.length;
-    if(len == 1) {
-      /* single process */
-      var data = currentProcs[i];
-      /* remove pseudo entry */
-      series[0].data.pop();
+  if(len == 1) {
+    /* single process */
+    var row = data[0];
+    /* remove pseudo entry */
+    series[0].data.pop();
 
-      /* add real data */
-      series[0].data.push([timestamp, data.virt]); // virt
-      series[1].data.push([timestamp, data.res ]); // res
-      series[2].data.push([timestamp, data.shr ]); // shr
-      series[3].data.push([timestamp, data.cpu ]); // cpu
+    /* add real data */
+    series[0].data.push([timestamp, row.virt]); // virt
+    series[1].data.push([timestamp, row.res ]); // res
+    series[2].data.push([timestamp, row.shr ]); // shr
+    series[3].data.push([timestamp, row.cpu ]); // cpu
 
-      /* advance to next minute to remove flickering */
-      var nextstep = timestamp - timestamp % 60000 + 60000;
-      series[0].data.push([nextstep, undefined]);
+    /* advance to next minute to remove flickering */
+    var nextstep = timestamp - timestamp % 60000 + 60000;
+    series[0].data.push([nextstep, undefined]);
 
-      var ssh = $("#sshhost").val();
-      $('#pid').html(data.pid+(ssh ? ' (on '+ssh+')' : ''));
-      $('#user').html(data.user);
-      $('#prio').html(data.pr);
-      $('#nice').html(data.ni);
-      $('#virt').html(formatKiB(data.virt)+" ("+data.virt+"KiB)");
-      $('#res').html(formatKiB(data.res)+" ("+data.res+"KiB)");
-      $('#shr').html(formatKiB(data.shr)+" ("+data.shr+"KiB)");
-      $('#s').html(data.s);
-      $('#cpu').html(data.cpu+" %");
-      $('#mem').html(data.mem+" %");
-      $('#time').html(data.time);
-      $('#command').html(data.command);
+    var ssh = $("#sshhost").val();
+    $('#pid').html(row.pid+(ssh ? ' (on '+ssh+')' : ''));
+    $('#user').html(row.user);
+    $('#prio').html(row.pr);
+    $('#nice').html(row.ni);
+    $('#virt').html(formatKiB(row.virt)+" ("+row.virt+"KiB)");
+    $('#res').html(formatKiB(row.res)+" ("+row.res+"KiB)");
+    $('#shr').html(formatKiB(row.shr)+" ("+row.shr+"KiB)");
+    $('#s').html(row.s);
+    $('#cpu').html(row.cpu+" %");
+    $('#mem').html(row.mem+" %");
+    $('#time').html(row.time);
+    $('#command').html(row.command);
 
-      /* show required rows */
-      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
-      $(keys).each(function(i, key) {
-        $('#'+key).parent().show();
-      });
-      var keys = ['filter'];
-      $(keys).each(function(i, key) {
-        $('#'+key).parent().hide();
-      });
+    /* show required rows */
+    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+    $(keys).each(function(i, key) {
+      $('#'+key).parent().show();
+    });
+    var keys = ['filter'];
+    $(keys).each(function(i, key) {
+      $('#'+key).parent().hide();
+    });
 
-      /* check series visibility */
-      drawVisibleSeries(nextstep);
-    } else {
-      /* multiple processes */
-      var pattern = new RegExp(lastFilter, 'i');
-      /* count totals */
-      var virt = 0, res = 0, shr = 0, cpu = 0, num = 0;
-      for(var i=0; i<len; i++) {
-        var data = currentProcs[i];
-        if(data.line.match(pattern)) {
-          virt += Number(data.virt);
-          res  += Number(data.res);
-          shr  += Number(data.shr);
-          cpu  += Number(data.cpu);
-          num++;
-        }
+    /* check series visibility */
+    drawVisibleSeries(nextstep);
+  } else {
+    /* multiple processes */
+    var pattern = new RegExp(lastFilter, 'i');
+    /* count totals */
+    var virt = 0, res = 0, shr = 0, cpu = 0, num = 0;
+    for(var i=0; i<len; i++) {
+      var row = data[i];
+      if(row.line.match(pattern)) {
+        virt += Number(row.virt);
+        res  += Number(row.res);
+        shr  += Number(row.shr);
+        cpu  += Number(row.cpu);
+        num++;
       }
-
-      /* remove pseudo entry */
-      series[0].data.pop();
-
-      /* add real data */
-      series[0].data.push([timestamp, virt]); // virt
-      series[1].data.push([timestamp, res ]); // res
-      series[2].data.push([timestamp, shr ]); // shr
-      series[3].data.push([timestamp, cpu ]); // cpu
-
-      /* advance to next minute to remove flickering */
-      var nextstep = timestamp - timestamp % 60000 + 60000;
-      series[0].data.push([nextstep, undefined]);
-
-      $('#filter').html(lastFilter+' ('+num+' matches)');
-      $('#virt').html(formatKiB(virt)+" ("+virt+"KiB)");
-      $('#res').html(formatKiB(res)+" ("+res+"KiB)");
-      $('#shr').html(formatKiB(shr)+" ("+shr+"KiB)");
-      $('#cpu').html(cpu.toFixed(0)+" %");
-
-      /* hide not required rows */
-      var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
-      $(keys).each(function(i, key) {
-        $('#'+key).parent().hide();
-      });
-      /* show required rows */
-      var keys = ['filter'];
-      $(keys).each(function(i, key) {
-        $('#'+key).parent().show();
-      });
-
-      /* check series visibility */
-      drawVisibleSeries(nextstep);
-
     }
-    currentProcs = [];
-    procRollover = false;
+
+    /* remove pseudo entry */
+    series[0].data.pop();
+
+    /* add real data */
+    series[0].data.push([timestamp, virt]); // virt
+    series[1].data.push([timestamp, res ]); // res
+    series[2].data.push([timestamp, shr ]); // shr
+    series[3].data.push([timestamp, cpu ]); // cpu
+
+    /* advance to next minute to remove flickering */
+    var nextstep = timestamp - timestamp % 60000 + 60000;
+    series[0].data.push([nextstep, undefined]);
+
+    $('#filter').html(lastFilter+' ('+num+' matches)');
+    $('#virt').html(formatKiB(virt)+" ("+virt+"KiB)");
+    $('#res').html(formatKiB(res)+" ("+res+"KiB)");
+    $('#shr').html(formatKiB(shr)+" ("+shr+"KiB)");
+    $('#cpu').html(cpu.toFixed(0)+" %");
+
+    /* hide not required rows */
+    var keys = ['pid', 'user', 'prio', 'nice', 's', 'mem', 'time', 'command'];
+    $(keys).each(function(i, key) {
+      $('#'+key).parent().hide();
+    });
+    /* show required rows */
+    var keys = ['filter'];
+    $(keys).each(function(i, key) {
+      $('#'+key).parent().show();
+    });
+
+    /* check series visibility */
+    drawVisibleSeries(nextstep);
   }
 }
 
