@@ -4,7 +4,7 @@ var spawn   = child.spawn;
 var exec    = child.exec;
 var gui     = require('nw.gui');
 var win     = gui.Window.get();
-var version = require('./package.json').version
+var version = gui.App.manifest.version
 
 /* do everything needed to startup */
 function init() {
@@ -250,8 +250,9 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
 }
 
 var plot, series, graph_interval, lastPid, lastFilter;
-var d1 = [], d2 = [], d3 = [], d4 = [], d5 = [];
 var graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
+var rawdata = [[],[],[],[],[]];
+var isZoomed = false;
 function startGraphing(pid, filter) {
   $('#procpanel').hide();
   $('#graphtable').show();
@@ -265,45 +266,47 @@ function startGraphing(pid, filter) {
     reset = true;
   }
   if(reset) {
-    reset = false;
     // reset series
-    d1 = [];
-    d2 = [];
-    d3 = [];
-    d4 = [];
-    d5 = [];
+    reset           = false;
+    rawdata         = [[],[],[],[],[]];
     graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
+    duplicateData   = false;
   }
   lastPid    = pid;
   lastFilter = filter;
 
   var s1 = {
+    nr:    0,
     label: "virt",
     color: "#edc240",
-    data: d1,
+    data: rawdata[0],
     yaxis: 2
   };
   var s2 = {
+    nr:    1,
     label: "res",
     color: "#afd8f8",
-    data: d2,
+    data: rawdata[1],
     yaxis: 2
   };
   var s3 = {
+    nr:    2,
     label: "shr",
     color: "#cb4b4b",
-    data: d3,
+    data: rawdata[2],
     yaxis: 2
   };
   var s4 = {
+    nr:    3,
     label: "cpu",
     color: "#4da74d",
-    data: d4
+    data: rawdata[3]
   };
   var s5 = {
+    nr:    4,
     label: "matches",
     color: "#9440ed",
-    data: d5
+    data: rawdata[4]
   };
   var options = {
     xaxis: { mode: "time",
@@ -356,17 +359,19 @@ function startGraphing(pid, filter) {
 
   /* enable zooming */
   $("#procgraph").bind("plotselected", function (event, ranges) {
+    isZoomed = true;
     $.each(plot.getXAxes(), function(_, axis) {
       var opts = axis.options;
       opts.min = ranges.xaxis.from;
       opts.max = ranges.xaxis.to;
     });
-    plot.setupGrid();
-    plot.draw();
+
+    drawVisibleSeries();
     plot.clearSelection();
   });
   /* reset zoom on rightclick */
   $("#procgraph").bind("contextmenu", function (event, pos, item) {
+    isZoomed = false;
     $.each(plot.getXAxes(), function(_, axis) {
       var opts = axis.options;
       opts.min = undefined;
@@ -422,7 +427,6 @@ function updateGraph(pid, filter) {
 function graphTopOutput(data) {
   var date      = new Date();
   var timestamp = date.getTime();
-  var nextstep  = timestamp - timestamp % 60000 + 60000;
   var redraw    = false;
   var len       = data.length;
 
@@ -437,17 +441,12 @@ function graphTopOutput(data) {
   if(len == 1) {
     /* single process */
     var row = data[0];
-    /* remove pseudo entry */
-    series[0].data.pop();
 
     /* add real data */
-    series[0].data.push([timestamp, row.virt]); // virt
-    series[1].data.push([timestamp, row.res ]); // res
-    series[2].data.push([timestamp, row.shr ]); // shr
-    series[3].data.push([timestamp, row.cpu ]); // cpu
-
-    /* advance to next minute to remove flickering */
-    series[0].data.push([nextstep, undefined]);
+    rawdata[0].push([timestamp, row.virt]); // virt
+    rawdata[1].push([timestamp, row.res ]); // res
+    rawdata[2].push([timestamp, row.shr ]); // shr
+    rawdata[3].push([timestamp, row.cpu ]); // cpu
 
     var ssh = $("#sshhost").val();
     $('#pid').html(row.pid+(ssh ? ' (on '+ssh+')' : ''));
@@ -494,18 +493,12 @@ function graphTopOutput(data) {
       }
     }
 
-    /* remove pseudo entry */
-    series[0].data.pop();
-
     /* add real data */
-    series[0].data.push([timestamp, virt]); // virt
-    series[1].data.push([timestamp, res ]); // res
-    series[2].data.push([timestamp, shr ]); // shr
-    series[3].data.push([timestamp, cpu ]); // cpu
-    series[4].data.push([timestamp, num ]); // matches
-
-    /* advance to next minute to remove flickering */
-    series[0].data.push([nextstep, undefined]);
+    rawdata[0].push([timestamp, virt]); // virt
+    rawdata[1].push([timestamp, res ]); // res
+    rawdata[2].push([timestamp, shr ]); // shr
+    rawdata[3].push([timestamp, cpu ]); // cpu
+    rawdata[4].push([timestamp, num ]); // matches
 
     $('#filter').html(lastFilter+' ('+num+' matches)');
     $('#virt').html(formatKiB(virt)+" ("+virt+"KiB)");
@@ -539,9 +532,9 @@ function graphTopOutput(data) {
     else if(redraws > 3600 && redraws % 10 != 0) { redraw = false; }
   }
 
-  if(redraw) {
+  if(redraw || isZoomed) {
     /* check series visibility */
-    drawVisibleSeries(nextstep);
+    drawVisibleSeries();
   }
 }
 
@@ -552,39 +545,92 @@ function adjustCpuAxisMaxValue() {
 }
 
 /* draw visible series */
-function drawVisibleSeries(nextstep) {
+var duplicateData = false;
+function drawVisibleSeries() {
+  var date      = new Date();
+  var timestamp = date.getTime();
+  var nextstep  = timestamp - timestamp % 60000 + 60000;
+
   /* adjust cpu axis */
   adjustCpuAxisMaxValue();
 
-  var tmpseries = [series[0], series[1], series[2], series[3], series[4]];
-  if(!graphVisibility['virt'])    { tmpseries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextstep, undefined]] }; }
-  if(!graphVisibility['res'])     { tmpseries[1] = { label: "res",     color: '#FFFFFF', data: [] }; }
-  if(!graphVisibility['shr'])     { tmpseries[2] = { label: "shr",     color: '#FFFFFF', data: [] }; }
-  if(!graphVisibility['cpu'])     { tmpseries[3] = { label: "cpu",     color: '#FFFFFF', data: [] }; }
-  if(!graphVisibility['matches']) { tmpseries[4] = { label: "matches", color: '#FFFFFF', data: [] }; }
+  var curSeries = [series[0], series[1], series[2], series[3], series[4]];
+  if(duplicateData && !isZoomed) {
+    var last = rawdata[3].length - 1;
+    curSeries[0].data.push(rawdata[0][last]);
+    curSeries[1].data.push(rawdata[1][last]);
+    curSeries[2].data.push(rawdata[2][last]);
+    curSeries[3].data.push(rawdata[3][last]);
+    curSeries[4].data.push(rawdata[4][last]);
+  }
+  if(!graphVisibility['virt'])    { curSeries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextstep, undefined]] }; }
+  if(!graphVisibility['res'])     { curSeries[1] = { label: "res",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['shr'])     { curSeries[2] = { label: "shr",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['cpu'])     { curSeries[3] = { label: "cpu",     color: '#FFFFFF', data: [] }; }
+  if(!graphVisibility['matches']) { curSeries[4] = { label: "matches", color: '#FFFFFF', data: [] }; }
 
   /* hide virt and shared on osx */
   if(curSyntax == 1) {
-    tmpseries = [tmpseries[1], tmpseries[3]];
+    curSeries = [curSeries[1], curSeries[3], curSeries[4]];
   }
 
   if(lastFilter == undefined) {
-    tmpseries.pop();
+    curSeries.pop();
   }
 
-  plot.setData(tmpseries);
+  /* reduce points to plot */
+  var factor = 2;
+  var num = Math.ceil(curSeries[0].data.length / plot.width()*factor);
+  if(num > 1 && !isZoomed) {
+    duplicateData = true;
+    num = Math.ceil(rawdata[0].length / plot.width() * factor);
+    for(var i=0, len=curSeries.length; i<len; i++) {
+      curSeries[i].data = reducePoints(rawdata[curSeries[i].nr], num);
+    }
+  }
+  if(isZoomed) {
+    for(var i=0, len=curSeries.length; i<len; i++) {
+      curSeries[i].data = rawdata[curSeries[i].nr];
+    }
+  }
+
+  /* advance to next minute to remove flickering */
+  curSeries[0].data.push([nextstep, undefined]);
+
+  plot.setData(curSeries);
   plot.resize();
   plot.setupGrid();
   plot.draw();
 
+  /* remove pseudo entry */
+  curSeries[0].data.pop();
+
   /* make legend boxes clickable */
   $('.legendColorBox').click(function() {
     graphVisibility[this.nextSibling.innerHTML] = !graphVisibility[this.nextSibling.innerHTML];
-    drawVisibleSeries(nextstep);
+    drawVisibleSeries();
     adjustCpuAxisMaxValue();
-    drawVisibleSeries(nextstep);
+    drawVisibleSeries();
   }).addClass("clickable");
   $('TD.legendLabel').css({paddingLeft: "5px"});
+}
+
+function reducePoints(listIn, num) {
+  var listOut = [listIn[0]];
+  var sumA = 0, sumB = 0, count = 0;
+  for(var i=1, len=listIn.length; i<len; i++) {
+    sumA += listIn[i][0];
+    sumB += listIn[i][1];
+    count++;
+    if(count == num) {
+      listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
+      sumA = 0, sumB = 0, count = 0;
+    }
+  }
+  if(count > 0) {
+    listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
+  }
+  return(listOut);
 }
 
 /* support opening external urls in default browser */
