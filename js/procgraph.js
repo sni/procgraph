@@ -127,6 +127,10 @@ function parseTopOutputStream(streamdata, callback) {
     lastOutput = "";
     for(var i=0, len = lines.length; i<len; i++) {
       var line = lines[i];
+      if(line.match(/^\s*top\s*/) || line.match(/^Processes:/)) {
+        var procStarted = false;
+        var currentProcs = [];
+      }
       line = line.replace(/^\s+/g, '');
       line = line.replace(/\s+$/g, '');
       var data = line.split(/\s+/g);
@@ -597,7 +601,9 @@ function drawVisibleSeries() {
   }
 
   /* advance to next minute to remove flickering */
-  curSeries[0].data.push([nextstep, undefined]);
+  if(curSeries[0] && curSeries[0].data) {
+    curSeries[0].data.push([nextstep, undefined]);
+  }
 
   plot.setData(curSeries);
   plot.resize();
@@ -605,7 +611,9 @@ function drawVisibleSeries() {
   plot.draw();
 
   /* remove pseudo entry */
-  curSeries[0].data.pop();
+  if(curSeries[0] && curSeries[0].data) {
+    curSeries[0].data.pop();
+  }
 
   /* make legend boxes clickable */
   $('.legendColorBox').click(function() {
@@ -621,8 +629,8 @@ function reducePoints(listIn, num) {
   var listOut = [listIn[0]];
   var sumA = 0, sumB = 0, count = 0;
   for(var i=1, len=listIn.length; i<len; i++) {
-    sumA += listIn[i][0];
-    sumB += listIn[i][1];
+    sumA += Number(listIn[i][0]);
+    sumB += Number(listIn[i][1]);
     count++;
     if(count == num) {
       listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
