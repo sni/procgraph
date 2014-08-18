@@ -524,13 +524,14 @@ function graphTopOutput(data) {
     redraw = true;
   }
 
+  /* slow down graph updates on long running graphs */
   if(redraw) {
     redraws++;
-    /* slow down graph updates on long running graphs */
-    if(     redraws <  600) {}
-    else if(redraws < 1800 && redraws %  3 != 0) { redraw = false; }
-    else if(redraws < 3600 && redraws %  5 != 0) { redraw = false; }
-    else if(redraws > 3600 && redraws % 10 != 0) { redraw = false; }
+    if(     redraws < 1800) {}
+    else if(redraws < 1800 && redraws %  2 != 0) { redraw = false; }
+    else if(redraws < 3600 && redraws %  3 != 0) { redraw = false; }
+    else if(redraws < 7200 && redraws %  5 != 0) { redraw = false; }
+    else if(redraws > 7200 && redraws % 10 != 0) { redraw = false; }
   }
 
   if(redraw || isZoomed) {
