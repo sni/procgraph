@@ -377,6 +377,7 @@ function startGraphing(pid, filter) {
       opts.min = undefined;
       opts.max = undefined;
     });
+    drawVisibleSeries();
   });
 }
 
