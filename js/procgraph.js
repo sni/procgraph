@@ -170,6 +170,11 @@ function parseTopOutputStream(streamdata, callback) {
           hash.command = data.join(' ');
           currentProcs.push(hash);
         }
+        if(hash.cpu > 10000) {
+          console.log("skipped broken cpu value in");
+          console.log(line);
+          return;
+        }
       }
       if(line.match(/^\s*PID\s+USER/)) {
         procStarted  = true;
