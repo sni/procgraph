@@ -54,5 +54,4 @@ pack: clean
 	@echo "$(NWFILE) created"
 
 nodemodules:
-	npm install bootstrap --ca=""
-	npm install jquery --ca=""
+	npm install
