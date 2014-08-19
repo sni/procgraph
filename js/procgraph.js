@@ -228,7 +228,10 @@ function spawnTop(callback, pid, altSyntax, filter) {
   }
   args = args.concat(standardArgs);
 
-  var interval = $('#intervalinput').val();
+  var interval;
+  if(pid || filter) {
+    interval = $('#intervalinput').val();
+  }
 
   if(altSyntax == 0) {
     if(interval) { args.push('-d', interval); }
