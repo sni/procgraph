@@ -37,7 +37,7 @@ function init() {
     $("#tooltip").hide();
     $("#proctable td").parent().remove();
     $('#procpanel').show();
-    spawnTop(updateTopTable);
+    spawnTop(updateTopTable, undefined, undefined, undefined, true);
   });
 
   $("#filterbtn").click(function() {
@@ -73,7 +73,7 @@ function init() {
       startGraphing(undefined, val);
     }
   } else {
-    spawnTop(updateTopTable);
+    spawnTop(updateTopTable, undefined, undefined, undefined, true);
   }
   return;
 }
@@ -124,8 +124,8 @@ function updateTopTable(data) {
 
 /* parse single line from top output */
 var lastOutput = "";
-function parseTopOutputStream(streamdata, callback) {
-  if((streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) && !lastOutput.match(/^\s*$/)) {
+function parseTopOutputStream(streamdata, callback, force) {
+  if(force || (streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) && !lastOutput.match(/^\s*$/)) {
     var procStarted = false;
     var currentProcs = [];
     var lines  = lastOutput.split(/\n+/g);
@@ -198,7 +198,7 @@ function updateInterval() {
 }
 
 var topChild = false, curSyntax = 0, lastCallback = false;
-function spawnTop(callback, pid, altSyntax, filter) {
+function spawnTop(callback, pid, altSyntax, filter, oneShot) {
   $('#sshbtn').text('connect');
   if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
   if(altSyntax == undefined) { altSyntax = 0; }
@@ -208,7 +208,7 @@ function spawnTop(callback, pid, altSyntax, filter) {
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
     /* osx top is crappy */
-    standardArgs = ['-l', '0', '-stats', 'pid,user,state,cpu,mem,time,command', '-F', '-R' ];
+    standardArgs = ['-stats', 'pid,user,state,cpu,mem,time,command', '-F', '-R' ];
   }
 
   var ssh     = $("#sshhost").val(),
@@ -231,6 +231,7 @@ function spawnTop(callback, pid, altSyntax, filter) {
   var interval;
   if(pid || filter) {
     interval = $('#intervalinput').val();
+    if(interval < 0.1) { interval = 0.1; }
   }
 
   if(altSyntax == 0) {
@@ -246,6 +247,17 @@ function spawnTop(callback, pid, altSyntax, filter) {
   lastOutput = "";
   topChild   = spawn(command, args, options);
   fullcmd    = command+' '+args.join(' ');
+
+  /* run top once for faster initial display */
+  if(oneShot) {
+    var extra = ' -n1';
+    if(altSyntax == 1) {
+      extra = ' -l1';
+    }
+    child = exec(fullcmd+" "+extra, function(error, stdout, stderr) {
+      parseTopOutputStream(stdout, callback);
+    });
+  }
 
   console.log("spawned["+topChild.pid+"]: "+fullcmd);
   if(!topChild) {
