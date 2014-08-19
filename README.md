@@ -36,8 +36,7 @@ Install bootstrap and jquery via npm:
 
     %> git clone https://github.com/sni/procgraph.git
     %> cd procgraph
-    %> npm install bootstrap
-    %> npm install jquery
+    %> npm install
 
 ## Usage
 
