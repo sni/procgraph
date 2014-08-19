@@ -1,6 +1,8 @@
 Changelog for procgraph
 
 next:
+        - added options dropdown
+        - added changeable interval
         - aggregrate multiple processes into one graph
         - hide virtual and shared memory on osx
         - fixed remaining top processes on osx

@@ -44,6 +44,11 @@ function init() {
     startGraphing(undefined, $("#proctablefilter").val());
   });
 
+  /* Fix input element click problem */
+  $('.dropdown input, .dropdown label').click(function(e) {
+    e.stopPropagation();
+  });
+
   win.on('resize', function() {
     if(lastPid || lastFilter) {
       plot.resize();
@@ -186,12 +191,19 @@ function parseTopOutputStream(streamdata, callback) {
   return;
 }
 
-var topChild = false, curSyntax = 0;
-function spawnTop(callback, interval, pid, altSyntax, filter) {
+/* start new top child with updated interval */
+function updateInterval() {
+  if(!topChild) { return; }
+  spawnTop(lastCallback, lastPid, curSyntax, lastFilter);
+}
+
+var topChild = false, curSyntax = 0, lastCallback = false;
+function spawnTop(callback, pid, altSyntax, filter) {
   $('#sshbtn').text('connect');
   if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
   if(altSyntax == undefined) { altSyntax = 0; }
   curSyntax    = altSyntax;
+  lastCallback = callback;
 
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
@@ -215,6 +227,9 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
     options = {env: {'COLUMNS': 1000}};
   }
   args = args.concat(standardArgs);
+
+  var interval = $('#intervalinput').val();
+
   if(altSyntax == 0) {
     if(interval) { args.push('-d', interval); }
     if(pid)      { args.push('-p', pid); }
@@ -242,7 +257,7 @@ function spawnTop(callback, interval, pid, altSyntax, filter) {
   });
   topChild.stderr.on('data', function (data) {
     if(data.toString().match(/invalid option or syntax/)) {
-      spawnTop(callback, interval, pid, ++altSyntax, filter);
+      spawnTop(callback, pid, ++altSyntax, filter);
       return;
     }
     console.log('stderr: ' + data);
@@ -431,7 +446,7 @@ function formatKiB(val) {
 var redraws = 0;
 function updateGraph(pid, filter) {
   redraws = 0;
-  spawnTop(graphTopOutput, 0.5, pid, undefined, filter);
+  spawnTop(graphTopOutput, pid, undefined, filter);
 }
 
 function graphTopOutput(data) {

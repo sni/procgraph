@@ -15,14 +15,30 @@
   </head>
   <body>
     <div class="navbar navbar-inverse navbar-default navbar-fixed-top" role="navigation">
+      <span class="glyphicon glyphicon-arrow-left" style="position: absolute; left: 15px; top: 17px; margin: 0; width: 20px; display: none;" id="backimg"></span>
       <div class="container">
-        <span class="glyphicon glyphicon-arrow-left" style="position: absolute; left: 10px; display: none;" id="backimg"></span>
         <div class="navbar-header">
           <a class="navbar-brand js-external-link" href="https://github.com/sni/procgraph/" style="bottom: 7px; position: relative;">
             ProcGraph<br><span id="version" style="font-size: small; left: 52px; bottom: 5px; position: relative;">v0.0.0</span>
           </a>
         </div>
+
+        <ul class="nav navbar-nav navbar-right">
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Options <span class="caret"></span></a>
+            <ul class="dropdown-menu" role="menu" style="min-width: 250px;">
+              <li role="presentation" class="dropdown-header">Update Interval:</li>
+              <li>
+                <div class="input-group input-group-sm" style="padding-left: 20px; padding-right: 20px;">
+                  <input type="text" class="form-control" placeholder="Interval" value="1" id="intervalinput" onchange="updateInterval()">
+                  <span class="input-group-addon">sec</span>
+                </div>
+              </li>
+            </ul>
+          </li>
+        </ul>
       </div>
+
     </div>
 
     <div style="padding: 3px; overflow-x: hidden; height: 100%;">
