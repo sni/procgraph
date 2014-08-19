@@ -49,12 +49,14 @@
         Select Process to Graph
         <div style="float: right;">
           <table><tr><td>
+          <form onsubmit="$('#sshbtn').click(); return false;">
           <div class="input-group input-group-sm" style="width:300px; padding-right: 40px;">
             <input type="text" class="form-control" placeholder="user@host (remote host by ssh)" id='sshhost'>
             <span class="input-group-btn">
               <button class="btn btn-default" type="button" id="sshbtn">connect</button>
             </span>
           </div>
+          </form>
           </td><td>
           <form onsubmit="$('#filterbtn').click(); return false;">
           <div class="input-group input-group-sm" style="width:300px;">
