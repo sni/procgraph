@@ -3,7 +3,7 @@
 
   "name": "procgraph",
   "description": "Proc Graph plots resource usage of a single linux process.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "keywords": [ "graph", "process" ],
   "main": "index.html",
   "window": {
