@@ -354,19 +354,23 @@ function startGraphing(pid, filter) {
     yaxes: [ { // left cpu axis
                min: 0,
                max: 100,
-               tickFormatter: function(val, axis) { return(val+"%"); }
+               tickFormatter: function(val, axis) { return(val < axis.max ? val+"%" : "CPU"); }
               },
               { // right size axis
                min: 0,
-               tickFormatter: formatKiB,
                position: "right",
-               alignTicksWithAxis: 1
+               alignTicksWithAxis: 1,
+               tickFormatter: function(val, axis) { return(val < axis.max ? formatKiB(val) : "MEM"); }
               }
           ],
     grid: {
       hoverable: true,
     },selection: {
       mode: "x"
+    },
+    legend: {
+      position: 'ne',
+      margin: [10, 40]
     }
   };
   series = [s1, s2, s3, s4, s5];
@@ -641,7 +645,9 @@ function drawVisibleSeries() {
   }
 
   plot.setData(curSeries);
-  plot.resize();
+  try {
+    plot.resize();
+  } catch(e) {}
   plot.setupGrid();
   plot.draw();
 
