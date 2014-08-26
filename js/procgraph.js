@@ -208,7 +208,7 @@ function spawnTop(callback, pid, altSyntax, filter, oneShot) {
   var standardArgs = ['-b', '-c'];
   if(altSyntax == 1) {
     /* osx top is crappy */
-    standardArgs = ['-stats', 'pid,user,state,cpu,mem,time,command', '-F', '-R' ];
+    standardArgs = ['-l', '0', '-stats', 'pid,user,state,cpu,mem,time,command', '-F', '-R' ];
   }
 
   var ssh     = $("#sshhost").val(),
