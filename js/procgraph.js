@@ -37,6 +37,7 @@ function init() {
     $("#tooltip").hide();
     $("#proctable td").parent().remove();
     $('#procpanel').show();
+    $('#controlbtngrp').css({display: 'none'});
     spawnTop(updateTopTable, undefined, undefined, undefined, true);
   });
 
@@ -61,6 +62,56 @@ function init() {
     /* make sure all top processes are done */
     child = exec('ps -efl | grep top | grep '+process.pid+' | awk \'{ print $1 }\' | xargs kill');
     this.close(true);
+  });
+
+  $("#stopbtn").click(function() {
+    if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+    $("#stopbtn").addClass('active');
+    $("#pausebtn").removeClass('active');
+    $("#playbtn").removeClass('active');
+    resetData();
+  });
+  $("#pausebtn").click(function() {
+    if($("#playbtn").hasClass('active')) {
+      if($("#pausebtn").hasClass('active')) {
+        $("#pausebtn").removeClass('active');
+
+        var date      = new Date();
+        var timestamp = date.getTime();
+        rawdata[0].push([timestamp, undefined]); // virt
+        rawdata[1].push([timestamp, undefined ]); // res
+        rawdata[2].push([timestamp, undefined ]); // shr
+        rawdata[3].push([timestamp, undefined ]); // cpu
+        rawdata[4].push([timestamp, undefined ]); // matches
+
+        startGraphing(lastPid, lastFilter);
+      } else {
+        $("#pausebtn").addClass('active');
+        if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+        var date      = new Date();
+        var timestamp = date.getTime();
+        rawdata[0].push([timestamp, undefined]); // virt
+        rawdata[1].push([timestamp, undefined ]); // res
+        rawdata[2].push([timestamp, undefined ]); // shr
+        rawdata[3].push([timestamp, undefined ]); // cpu
+        rawdata[4].push([timestamp, undefined ]); // matches
+      }
+    } else {
+      if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+      $("#stopbtn").removeClass('active');
+      $("#pausebtn").addClass('active');
+      $("#playbtn").addClass('active');
+    }
+  });
+  $("#playbtn").click(function() {
+    if($("#pausebtn").hasClass('active')) {
+      $("#pausebtn").click();
+    } else {
+      startGraphing(lastPid, lastFilter);
+      $("#playbtn").addClass('active');
+      $("#stopbtn").removeClass('active');
+      $("#pausebtn").removeClass('active');
+    }
   });
 
   console.log(gui.App.argv);
@@ -296,6 +347,8 @@ function startGraphing(pid, filter) {
   $('#procpanel').hide();
   $('#graphtable').show();
   $('#backimg').show();
+  $('#controlbtngrp').css({display: 'block'});
+  $('#playbtn').addClass('active');
 
   var reset = false;
   if(pid && (lastPid == undefined || lastPid != pid)) {
@@ -307,9 +360,7 @@ function startGraphing(pid, filter) {
   if(reset) {
     // reset series
     reset           = false;
-    rawdata         = [[],[],[],[],[]];
-    graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
-    duplicateData   = false;
+    resetData();
   }
   lastPid    = pid;
   lastFilter = filter;
@@ -422,6 +473,12 @@ function startGraphing(pid, filter) {
     });
     drawVisibleSeries();
   });
+}
+
+function resetData() {
+    rawdata         = [[],[],[],[],[]];
+    graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
+    duplicateData   = false;
 }
 
 /* normalize memory value */
