@@ -1,6 +1,7 @@
 Changelog for procgraph
 
 next:
+        - added import/export menu
         - added control buttons for play/pause
         - added options dropdown
         - added changeable interval

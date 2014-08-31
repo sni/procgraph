@@ -44,3 +44,7 @@ body { padding-top: 60px; }
 .error {
   color: red;
 }
+
+.menu-icon {
+  padding-right: 8px;
+}

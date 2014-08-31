@@ -1,4 +1,5 @@
 var sys     = require('sys')
+var fs      = require('fs');
 var child   = require('child_process');
 var spawn   = child.spawn;
 var exec    = child.exec;
@@ -38,6 +39,7 @@ function init() {
     $("#proctable td").parent().remove();
     $('#procpanel').show();
     $('#controlbtngrp').css({display: 'none'});
+    $('#exportbtn').addClass('disabled');
     spawnTop(updateTopTable, undefined, undefined, undefined, true);
   });
 
@@ -79,10 +81,10 @@ function init() {
         var date      = new Date();
         var timestamp = date.getTime();
         rawdata[0].push([timestamp, undefined]); // virt
-        rawdata[1].push([timestamp, undefined ]); // res
-        rawdata[2].push([timestamp, undefined ]); // shr
-        rawdata[3].push([timestamp, undefined ]); // cpu
-        rawdata[4].push([timestamp, undefined ]); // matches
+        rawdata[1].push([timestamp, undefined]); // res
+        rawdata[2].push([timestamp, undefined]); // shr
+        rawdata[3].push([timestamp, undefined]); // cpu
+        rawdata[4].push([timestamp, undefined]); // matches
 
         startGraphing(lastPid, lastFilter);
       } else {
@@ -91,10 +93,10 @@ function init() {
         var date      = new Date();
         var timestamp = date.getTime();
         rawdata[0].push([timestamp, undefined]); // virt
-        rawdata[1].push([timestamp, undefined ]); // res
-        rawdata[2].push([timestamp, undefined ]); // shr
-        rawdata[3].push([timestamp, undefined ]); // cpu
-        rawdata[4].push([timestamp, undefined ]); // matches
+        rawdata[1].push([timestamp, undefined]); // res
+        rawdata[2].push([timestamp, undefined]); // shr
+        rawdata[3].push([timestamp, undefined]); // cpu
+        rawdata[4].push([timestamp, undefined]); // matches
       }
     } else {
       if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
@@ -339,17 +341,30 @@ function spawnTop(callback, pid, altSyntax, filter, oneShot) {
   });
 }
 
-var plot, series, graph_interval, lastPid, lastFilter;
-var graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
-var rawdata = [[],[],[],[],[]];
-var isZoomed = false;
-function startGraphing(pid, filter) {
+function showGraph() {
   $('#procpanel').hide();
   $('#graphtable').show();
   $('#backimg').show();
   $('#controlbtngrp').css({display: 'block'});
   $('#playbtn').addClass('active');
+  $('#exportbtn').removeClass('disabled');
+}
 
+var plot, series, graph_interval, lastPid, lastFilter;
+var graphVisibility = { virt: true, res: true, shr: true, cpu: true, matches: true };
+var rawdata = [[],[],[],[],[]];
+var isZoomed = false;
+function startGraphing(pid, filter, graphOnly) {
+  showGraph();
+
+  $("#stopbtn").removeClass('active');
+  $("#pausebtn").removeClass('active');
+  $("#playbtn").addClass('active');
+  if(graphOnly) {
+    $("#stopbtn").addClass('active');
+    $("#pausebtn").removeClass('active');
+    $("#playbtn").removeClass('active');
+  }
   var reset = false;
   if(pid && (lastPid == undefined || lastPid != pid)) {
     reset = true;
@@ -426,7 +441,9 @@ function startGraphing(pid, filter) {
   };
   series = [s1, s2, s3, s4, s5];
   plot = $.plot('#procgraph', series, options);
-  updateGraph(pid, filter);
+  if(!graphOnly) {
+    updateGraph(pid, filter);
+  }
 
   /* graph hover */
   $("#procgraph").bind("plothover", function (event, pos, item) {
@@ -465,14 +482,18 @@ function startGraphing(pid, filter) {
   });
   /* reset zoom on rightclick */
   $("#procgraph").bind("contextmenu", function (event, pos, item) {
-    isZoomed = false;
-    $.each(plot.getXAxes(), function(_, axis) {
-      var opts = axis.options;
-      opts.min = undefined;
-      opts.max = undefined;
-    });
-    drawVisibleSeries();
+    zoomOut()
   });
+}
+
+function zoomOut() {
+  isZoomed = false;
+  $.each(plot.getXAxes(), function(_, axis) {
+    var opts = axis.options;
+    opts.min = undefined;
+    opts.max = undefined;
+  });
+  drawVisibleSeries();
 }
 
 function resetData() {
@@ -649,22 +670,20 @@ function adjustCpuAxisMaxValue() {
 /* draw visible series */
 var duplicateData = false;
 function drawVisibleSeries() {
-  var date      = new Date();
-  var timestamp = date.getTime();
-  var nextstep  = timestamp - timestamp % 60000 + 60000;
-
   /* adjust cpu axis */
   adjustCpuAxisMaxValue();
 
   var curSeries = [series[0], series[1], series[2], series[3], series[4]];
+  var last = rawdata[3].length - 1;
   if(duplicateData && !isZoomed) {
-    var last = rawdata[3].length - 1;
     curSeries[0].data.push(rawdata[0][last]);
     curSeries[1].data.push(rawdata[1][last]);
     curSeries[2].data.push(rawdata[2][last]);
     curSeries[3].data.push(rawdata[3][last]);
     curSeries[4].data.push(rawdata[4][last]);
   }
+  var timestamp = rawdata[3][last][0];
+  var nextstep  = timestamp - timestamp % 60000 + 60000;
   if(!graphVisibility['virt'])    { curSeries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextstep, undefined]] }; }
   if(!graphVisibility['res'])     { curSeries[1] = { label: "res",     color: '#FFFFFF', data: [] }; }
   if(!graphVisibility['shr'])     { curSeries[2] = { label: "shr",     color: '#FFFFFF', data: [] }; }
@@ -721,6 +740,7 @@ function drawVisibleSeries() {
     drawVisibleSeries();
   }).addClass("clickable");
   $('TD.legendLabel').css({paddingLeft: "5px"});
+  return(curSeries);
 }
 
 function reducePoints(listIn, num) {
@@ -739,6 +759,59 @@ function reducePoints(listIn, num) {
     listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
   }
   return(listOut);
+}
+
+function chooseFile(name, callback) {
+  var chooser = $(name);
+  chooser.change(function(evt) {
+    var val = $(this).val();
+    if(val != "") {
+      callback($(this).val());
+    }
+    $(this).val('');
+  });
+  chooser.trigger('click');
+}
+
+function loadData(file) {
+  console.log('loading:'+file);
+  fs.readFile(file, function (err, content) {
+    if(err) {
+      alert("loading "+file+" failed: "+err);
+    } else {
+      var data = {};
+      try {
+        var data = JSON.parse(content.toString());
+      } catch(e) {}
+      if(data.data) {
+        if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
+        lastPid    = data.lastPid;
+        lastFilter = data.lastFilter;
+        rawdata    = data.data;
+
+        var last      = rawdata[3].length - 1;
+        var timestamp = rawdata[3][last][0]+1;
+        rawdata[0].push([timestamp, undefined]); // virt
+        rawdata[1].push([timestamp, undefined]); // res
+        rawdata[2].push([timestamp, undefined]); // shr
+        rawdata[3].push([timestamp, undefined]); // cpu
+        rawdata[4].push([timestamp, undefined]); // matches
+
+        startGraphing(lastPid, lastFilter, true);
+        zoomOut();
+      }
+    }
+  });
+}
+
+function saveData(file) {
+  console.log('saving '+file);
+  var data = JSON.stringify({lastPid: lastPid, lastFilter: lastFilter, data: rawdata});
+  fs.writeFile(file, data, function(err) {
+      if(err) {
+        alert("saving "+file+" failed: "+err);
+      }
+  });
 }
 
 /* support opening external urls in default browser */
