@@ -747,12 +747,22 @@ function reducePoints(listIn, num) {
   var listOut = [listIn[0]];
   var sumA = 0, sumB = 0, count = 0;
   for(var i=1, len=listIn.length; i<len; i++) {
-    sumA += Number(listIn[i][0]);
-    sumB += Number(listIn[i][1]);
-    count++;
-    if(count == num) {
-      listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
-      sumA = 0, sumB = 0, count = 0;
+    if(listIn[i][1] == undefined) {
+      if(i > 0 && listIn[i-1][1] != undefined) {
+        /* only need to save the first/last undefined value */
+        listOut.push([listIn[i][0], undefined]);
+      }
+      else if(listIn[i+1] == undefined || listIn[i+1][1] != undefined) {
+        listOut.push([listIn[i][0], undefined]);
+      }
+    } else {
+      sumA += Number(listIn[i][0]);
+      sumB += Number(listIn[i][1]);
+      count++;
+      if(count == num) {
+        listOut.push([Math.round(sumA/count), Math.round(sumB/count)]);
+        sumA = 0, sumB = 0, count = 0;
+      }
     }
   }
   if(count > 0) {
