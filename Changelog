@@ -7,6 +7,7 @@ next:
         - added changeable interval
         - aggregrate multiple processes into one graph
         - hide virtual and shared memory on osx
+        - made chart legend draggable
         - fixed remaining top processes on osx
 
 0.2.0   Fri Aug 15 15:18:27 CEST 2014

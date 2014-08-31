@@ -40,6 +40,7 @@ function init() {
     $('#procpanel').show();
     $('#controlbtngrp').css({display: 'none'});
     $('#exportbtn').addClass('disabled');
+    $('#exportFileDialog').attr('disabled', true);
     spawnTop(updateTopTable, undefined, undefined, undefined, true);
   });
 
@@ -348,6 +349,7 @@ function showGraph() {
   $('#controlbtngrp').css({display: 'block'});
   $('#playbtn').addClass('active');
   $('#exportbtn').removeClass('disabled');
+  $('#exportFileDialog').attr('disabled', false);
 }
 
 var plot, series, graph_interval, lastPid, lastFilter;
@@ -453,7 +455,7 @@ function startGraphing(pid, filter, graphOnly) {
 
       var val;
       if(item.series.label == 'cpu') {
-        val = y+'%';
+        val = y.toFixed(1)+'%';
       } else if(item.series.label == 'matches') {
         val = '#' + y;
       } else {
@@ -740,6 +742,24 @@ function drawVisibleSeries() {
     drawVisibleSeries();
   }).addClass("clickable");
   $('TD.legendLabel').css({paddingLeft: "5px"});
+
+  /* make legend draggable*/
+  var legend = $(".legend", plot.getPlaceholder()).css({position: 'relative', top:'0', right:'0'})[0];
+  var table  = $(".legend TABLE", plot.getPlaceholder()).first().attr('draggable', true)[0];
+  table.ondragstart = function(e) {
+    dragStart = {x: e.screenX-e.offsetX, y: e.screenY+(e.target.offsetHeight-e.offsetY)};
+  };
+  table.ondragend   = function(e) {
+    dragEnd = {x: e.screenX, y: e.screenY};
+    e.preventDefault();
+    var deltaX = dragEnd.x - dragStart.x;
+    var deltaY = dragEnd.y - dragStart.y;
+    var top   = Number(legend.style.top.replace('px', ''))   + deltaY;
+    var right = Number(legend.style.right.replace('px', '')) - deltaX;
+    legend.style.top   = top+'px';
+    legend.style.right = right+'px';
+  };
+
   return(curSeries);
 }
 
