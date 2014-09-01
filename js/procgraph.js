@@ -23,6 +23,7 @@ function init() {
     refilterTopTable('');
   });
   $("#sshbtn").click(function() {
+    $("#proctable td").parent().remove();
     if($('#sshbtn').text() == "disconnect") {
       $('#sshhost').val('');
       $('#sshbtn').text('connect');
