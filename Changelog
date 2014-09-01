@@ -1,5 +1,8 @@
 Changelog for procgraph
 
+0.3.1   Mon Sep  1 16:52:12 CEST 2014
+        - osx builds create dmg files
+
 0.3.0   Mon Sep  1 14:38:33 CEST 2014
         - added import/export menu
         - added control buttons for play/pause

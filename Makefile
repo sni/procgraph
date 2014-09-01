@@ -39,7 +39,7 @@ pkg-osx: $(NWFILE)
 	cat resources/Info.plist | sed -e 's/###VERSION###/$(VERSION)/' | sed -e 's/###GITREF###/$(GITREF)/' > $(APPNAME)/Contents/Info.plist
 	cp resources/nw.icns $(APPNAME)/Contents/Resources/nw.icns
 	mkdir osx-pkg
-	mv $(APPNAME) osx-pkg/ProcGraph
+	mv $(APPNAME) osx-pkg/ProcGraph.app
 	# https://github.com/andreyvit/yoursway-create-dmg/
 	./resources/create-dmg \
 		--volname "$(APPNAME)-$(VERSION)" \
@@ -47,7 +47,7 @@ pkg-osx: $(NWFILE)
 		--window-pos 300 200 \
 		--window-size 628 288 \
 		--icon-size 128 \
-		--icon "ProcGraph" 100 135 \
+		--icon "ProcGraph.app" 100 135 \
 		--app-drop-link 520 135 \
 		--no-internet-enable \
 		"$(APPNAME)-$(VERSION).dmg" \

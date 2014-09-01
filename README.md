@@ -15,10 +15,10 @@ Proc Graph plots memory and cpu resource usage of Linux / OSX process(es) based 
 
 Use these stable binary releases if in doubt. Source installations are available below for developers.
 
-* **v0.3.0**
+* **v0.3.1**
 
- * Linux: [32bit](https://github.com/sni/procgraph/releases/download/v0.3.0/procgraph-0.3.0.linux.i686.tar.gz) / [64bit](https://github.com/sni/procgraph/releases/download/v0.3.0/procgraph-0.3.0.linux.x86_64.tar.gz)
- * MacOSX: [64bit](https://github.com/sni/procgraph/releases/download/v0.3.0/procgraph-0.3.0-osx.zip)
+ * Linux: [32bit](https://github.com/sni/procgraph/releases/download/v0.3.1/procgraph-0.3.1.linux.i686.tar.gz) / [64bit](https://github.com/sni/procgraph/releases/download/v0.3.1/procgraph-0.3.1.linux.x86_64.tar.gz)
+ * MacOSX: [64bit](https://github.com/sni/procgraph/releases/download/v0.3.1/procgraph-0.3.1.dmg)
 
 * **old releases**
 
