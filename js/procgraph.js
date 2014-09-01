@@ -7,6 +7,12 @@ var gui     = require('nw.gui');
 var win     = gui.Window.get();
 var version = gui.App.manifest.version
 
+/* precompiled regular expressions */
+var topStartRegexp1 = new RegExp(/^\s*top\s*/);
+var topStartRegexp2 = new RegExp(/^Processes:/);
+var lineBreakRegexp = new RegExp(/\n+/g);
+var procStartRegexp = new RegExp(/^\s*PID\s+USER/);
+
 /* do everything needed to startup */
 function init() {
   $('#version').text('v'+version);
@@ -177,71 +183,71 @@ function updateTopTable(data) {
 }
 
 /* parse single line from top output */
-var lastOutput = "";
+var lastOutput = '';
 function parseTopOutputStream(streamdata, callback, force) {
-  if(force || (streamdata.match(/^\s*top\s*/) || streamdata.match(/^Processes:/)) && !lastOutput.match(/^\s*$/)) {
-    var procStarted = false;
-    var currentProcs = [];
-    var lines  = lastOutput.split(/\n+/g);
-    lastOutput = "";
-    for(var i=0, len = lines.length; i<len; i++) {
-      var line = lines[i];
-      if(line.match(/^\s*top\s*/) || line.match(/^Processes:/)) {
-        var procStarted = false;
-        var currentProcs = [];
+  if(lastOutput == '' || !(force || streamdata.match(topStartRegexp1) || streamdata.match(topStartRegexp2))) {
+    lastOutput += streamdata;
+    return;
+  }
+  var procStarted  = false;
+  var currentProcs = [];
+  var lines        = lastOutput.split(lineBreakRegexp);
+  lastOutput       = streamdata;
+  for(var i=0, len = lines.length; i<len; i++) {
+    var line = lines[i];
+    if(line.match(topStartRegexp1) || line.match(topStartRegexp2)) {
+      var procStarted = false;
+      var currentProcs = [];
+    }
+    line = line.trim();
+    var data = line.split(/\s+/g);
+    if(procStarted) {
+      var hash = {};
+      if(curSyntax == 0) {
+        if(!data[11]) { continue; }
+        hash.line    = line;
+        hash.pid     = data.shift();
+        hash.user    = data.shift();
+        hash.pr      = data.shift();
+        hash.ni      = data.shift();
+        hash.virt    = normalizeMemVal(data.shift(), line);
+        hash.res     = normalizeMemVal(data.shift(), line);
+        hash.shr     = normalizeMemVal(data.shift(), line);
+        hash.s       = data.shift();
+        hash.cpu     = data.shift();
+        hash.mem     = data.shift();
+        hash.time    = data.shift();
+        hash.command = data.join(' ');
+        currentProcs.push(hash);
       }
-      line = line.replace(/^\s+/g, '');
-      line = line.replace(/\s+$/g, '');
-      var data = line.split(/\s+/g);
-      if(procStarted) {
-        var hash = {};
-        if(curSyntax == 0) {
-          if(!data[11]) { continue; }
-          hash.line    = line;
-          hash.pid     = data.shift();
-          hash.user    = data.shift();
-          hash.pr      = data.shift();
-          hash.ni      = data.shift();
-          hash.virt    = normalizeMemVal(data.shift(), line);
-          hash.res     = normalizeMemVal(data.shift(), line);
-          hash.shr     = normalizeMemVal(data.shift(), line);
-          hash.s       = data.shift();
-          hash.cpu     = data.shift();
-          hash.mem     = data.shift();
-          hash.time    = data.shift();
-          hash.command = data.join(' ');
-          currentProcs.push(hash);
-        }
-        if(curSyntax == 1) {
-          if(!data[6]) { continue; }
-          hash.line    = line;
-          hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
-          hash.user    = data.shift();
-          hash.pr      = '';
-          hash.ni      = '';
-          hash.s       = data.shift();
-          hash.cpu     = data.shift();
-          hash.res     = normalizeMemVal(data.shift(), line);
-          hash.time    = data.shift();
-          hash.virt    = '';
-          hash.shr     = '';
-          hash.mem     = '';
-          hash.command = data.join(' ');
-          currentProcs.push(hash);
-        }
-        if(hash.cpu > 10000) {
-          console.log("skipped broken cpu value in");
-          console.log(line);
-          return;
-        }
+      if(curSyntax == 1) {
+        if(!data[6]) { continue; }
+        hash.line    = line;
+        hash.pid     = Number(String(data.shift()).replace(/\-$/, ''));
+        hash.user    = data.shift();
+        hash.pr      = '';
+        hash.ni      = '';
+        hash.s       = data.shift();
+        hash.cpu     = data.shift();
+        hash.res     = normalizeMemVal(data.shift(), line);
+        hash.time    = data.shift();
+        hash.virt    = '';
+        hash.shr     = '';
+        hash.mem     = '';
+        hash.command = data.join(' ');
+        currentProcs.push(hash);
       }
-      if(line.match(/^\s*PID\s+USER/)) {
-        procStarted  = true;
+      if(hash.cpu > 10000) {
+        console.log("skipped broken cpu value in");
+        console.log(line);
+        return;
       }
     }
-    callback(currentProcs);
+    if(line.match(procStartRegexp)) {
+      procStarted  = true;
+    }
   }
-  lastOutput += streamdata;
+  callback(currentProcs);
   return;
 }
 
@@ -273,12 +279,12 @@ function spawnTop(callback, pid, altSyntax, filter, oneShot) {
   if(ssh) {
     /* remote top */
     $('#sshbtn').text('disconnect');
-    args    = [ ssh, '-o', 'BatchMode=yes', 'COLUMNS=1000 top'];
+    args    = [ ssh, '-o', 'BatchMode=yes', '-o', 'Compression=yes', '-o', 'CompressionLevel=9', 'COLUMNS=300 top'];
     command = 'ssh';
   } else {
     /* local top */
     command = 'top';
-    options = {env: {'COLUMNS': 1000}};
+    options = {env: {'COLUMNS': 300}};
   }
   args = args.concat(standardArgs);
 
@@ -298,8 +304,7 @@ function spawnTop(callback, pid, altSyntax, filter, oneShot) {
     if(pid)      { args.push('-pid', pid); }
   }
 
-  lastOutput = "";
-  topChild   = spawn(command, args, options);
+  lastOutput = '';
   fullcmd    = command+' '+args.join(' ');
 
   /* run top once for faster initial display */
@@ -308,11 +313,13 @@ function spawnTop(callback, pid, altSyntax, filter, oneShot) {
     if(altSyntax == 1) {
       extra = ' -l1';
     }
-    child = exec(fullcmd+" "+extra, function(error, stdout, stderr) {
+    child = exec(fullcmd+" "+extra, options, function(error, stdout, stderr) {
       parseTopOutputStream(stdout, callback);
     });
   }
 
+  lastOutput = '';
+  topChild   = spawn(command, args, options);
   console.log("spawned["+topChild.pid+"]: "+fullcmd);
   if(!topChild) {
     console.log("failed to launch top");
