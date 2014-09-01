@@ -1,6 +1,6 @@
 Changelog for procgraph
 
-next:
+0.3.0   Mon Sep  1 14:38:33 CEST 2014
         - added import/export menu
         - added control buttons for play/pause
         - added options dropdown
