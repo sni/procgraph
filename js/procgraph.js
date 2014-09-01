@@ -55,8 +55,8 @@ function init() {
 
   win.on('resize', function() {
     if(lastPid || lastFilter) {
-      plot.resize();
-      plot.draw();
+      redrawRequired = true;
+      drawVisibleSeries();
     }
   });
 
@@ -358,6 +358,7 @@ var rawdata = [[],[],[],[],[]];
 var isZoomed = false;
 function startGraphing(pid, filter, graphOnly) {
   showGraph();
+  redrawRequired = true;
 
   $("#stopbtn").removeClass('active');
   $("#pausebtn").removeClass('active');
@@ -442,7 +443,8 @@ function startGraphing(pid, filter, graphOnly) {
     }
   };
   series = [s1, s2, s3, s4, s5];
-  plot = $.plot('#procgraph', series, options);
+  plot = $.plot('#procgraph', [], options);
+  redrawRequired = true;
   if(!graphOnly) {
     updateGraph(pid, filter);
   }
@@ -479,6 +481,7 @@ function startGraphing(pid, filter, graphOnly) {
       opts.max = ranges.xaxis.to;
     });
 
+    redrawRequired = true;
     drawVisibleSeries();
     plot.clearSelection();
   });
@@ -495,6 +498,7 @@ function zoomOut() {
     opts.min = undefined;
     opts.max = undefined;
   });
+  redrawRequired = true;
   drawVisibleSeries();
 }
 
@@ -666,17 +670,23 @@ function graphTopOutput(data) {
 function adjustCpuAxisMaxValue() {
   var newmax = Math.ceil(plot.getYAxes()[0].datamax / 100)*100;
   if(newmax < 100) { newmax = 100; }
-  plot.getOptions().yaxes[0].max=newmax;
+  if(plot.getOptions().yaxes[0].max != newmax) {
+    redrawRequired = true;
+    plot.getOptions().yaxes[0].max=newmax;
+  }
 }
 
 /* draw visible series */
-var duplicateData = false;
+var duplicateData  = false;
+var redrawRequired = true;
 function drawVisibleSeries() {
+  var last = rawdata[3].length - 1;
+  if(last < 0) { return; }
+
   /* adjust cpu axis */
   adjustCpuAxisMaxValue();
 
   var curSeries = [series[0], series[1], series[2], series[3], series[4]];
-  var last = rawdata[3].length - 1;
   if(duplicateData && !isZoomed) {
     curSeries[0].data.push(rawdata[0][last]);
     curSeries[1].data.push(rawdata[1][last]);
@@ -684,9 +694,19 @@ function drawVisibleSeries() {
     curSeries[3].data.push(rawdata[3][last]);
     curSeries[4].data.push(rawdata[4][last]);
   }
-  var timestamp = rawdata[3][last][0];
-  var nextstep  = timestamp - timestamp % 60000 + 60000;
-  if(!graphVisibility['virt'])    { curSeries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextstep, undefined]] }; }
+  var timestamp  = rawdata[3][last][0];
+  var nextminute = timestamp - timestamp % 60000 + 60000;
+  if(last < 2) {
+    redrawRequired = true;
+  }
+  else if(last > 1) {
+    var lasttimestamp  = rawdata[3][last-1][0];
+    var lastminute     = lasttimestamp - lasttimestamp % 60000 + 60000;
+    if(lastminute != nextminute) {
+      redrawRequired = true;
+    }
+  }
+  if(!graphVisibility['virt'])    { curSeries[0] = { label: "virt",    color: '#FFFFFF', data: [[nextminute, undefined]] }; }
   if(!graphVisibility['res'])     { curSeries[1] = { label: "res",     color: '#FFFFFF', data: [] }; }
   if(!graphVisibility['shr'])     { curSeries[2] = { label: "shr",     color: '#FFFFFF', data: [] }; }
   if(!graphVisibility['cpu'])     { curSeries[3] = { label: "cpu",     color: '#FFFFFF', data: [] }; }
@@ -719,14 +739,18 @@ function drawVisibleSeries() {
 
   /* advance to next minute to remove flickering */
   if(curSeries[0] && curSeries[0].data) {
-    curSeries[0].data.push([nextstep, undefined]);
+    curSeries[0].data.push([nextminute, undefined]);
   }
 
   plot.setData(curSeries);
-  try {
-    plot.resize();
-  } catch(e) {}
-  plot.setupGrid();
+  if(redrawRequired) {
+    try {
+      plot.resize();
+      plot.setupGrid();
+      setupLegendEvents();
+    } catch(e) {}
+    redrawRequired = false;
+  }
   plot.draw();
 
   /* remove pseudo entry */
@@ -734,17 +758,22 @@ function drawVisibleSeries() {
     curSeries[0].data.pop();
   }
 
+  return(curSeries);
+}
+
+function setupLegendEvents() {
   /* make legend boxes clickable */
   $('.legendColorBox').click(function() {
     graphVisibility[this.nextSibling.innerHTML] = !graphVisibility[this.nextSibling.innerHTML];
     drawVisibleSeries();
     adjustCpuAxisMaxValue();
-    drawVisibleSeries();
+    if(redrawRequired) {
+      drawVisibleSeries();
+    }
   }).addClass("clickable");
   $('TD.legendLabel').css({paddingLeft: "5px"});
 
   /* make legend draggable*/
-  var legend = $(".legend", plot.getPlaceholder()).css({position: 'relative', top:'0', right:'0'})[0];
   var table  = $(".legend TABLE", plot.getPlaceholder()).first().attr('draggable', true)[0];
   table.ondragstart = function(e) {
     dragStart = {x: e.screenX-e.offsetX, y: e.screenY+(e.target.offsetHeight-e.offsetY)};
@@ -754,13 +783,11 @@ function drawVisibleSeries() {
     e.preventDefault();
     var deltaX = dragEnd.x - dragStart.x;
     var deltaY = dragEnd.y - dragStart.y;
-    var top   = Number(legend.style.top.replace('px', ''))   + deltaY;
-    var right = Number(legend.style.right.replace('px', '')) - deltaX;
-    legend.style.top   = top+'px';
-    legend.style.right = right+'px';
+    var old = plot.getOptions().legend.margin;
+    plot.getOptions().legend.margin = [old[0]-deltaX, old[1]+deltaY];
+    plot.setupGrid();
+    setupLegendEvents();
   };
-
-  return(curSeries);
 }
 
 function reducePoints(listIn, num) {
