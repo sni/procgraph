@@ -674,12 +674,18 @@ function graphTopOutput(data) {
   }
 }
 
+var lastMemDataMax;
 function adjustCpuAxisMaxValue() {
   var newmax = Math.ceil(plot.getYAxes()[0].datamax / 100)*100;
   if(newmax < 100) { newmax = 100; }
   if(plot.getOptions().yaxes[0].max != newmax) {
     redrawRequired = true;
     plot.getOptions().yaxes[0].max=newmax;
+  }
+  /* check other axis too */
+  if(lastMemDataMax != plot.getYAxes()[1].datamax) {
+    lastMemDataMax = plot.getYAxes()[1].datamax;
+    redrawRequired = true;
   }
 }
 
