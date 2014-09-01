@@ -1,6 +1,6 @@
-## Proc Graph ##
+# Proc Graph #
 
-Proc Graph plots resource usage of linux / osx process(es) based on top data.
+Proc Graph plots memory and cpu resource usage of linux / osx process(es) based on top data.
 
 ![Graph](resources/screenshots/graph.png)
 
@@ -24,6 +24,7 @@ Use these stable binary releases if in doubt. Source installations are available
 
  * can be found in the [github release archive](https://github.com/sni/procgraph/releases)
 
+
 ## Source Installation
 
 ### Requirements
@@ -35,7 +36,6 @@ data.
  * node-webkit
  * npm
 
-
 ### Install dependencies
 
 Install bootstrap and jquery via npm:
@@ -44,11 +44,15 @@ Install bootstrap and jquery via npm:
     %> cd procgraph
     %> npm install
 
-### Usage
+### Start
 
 Run with node-webkit
 
     %> <path to node-webkit>/nw .
+
+On osx the nw binary is called 'node-webkit'.
+
+    %> /Applications/node-webkit-v0.8.6-osx-ia32/Contents/MacOS/node-webkit .
 
 ## More information
 
