@@ -1,6 +1,6 @@
 # Proc Graph #
 
-Proc Graph plots memory and cpu resource usage of linux / osx process(es) based on top data.
+Proc Graph plots memory and cpu resource usage of Linux / OSX process(es) based on top data.
 
 ![Graph](resources/screenshots/graph.png)
 
@@ -25,6 +25,14 @@ Use these stable binary releases if in doubt. Source installations are available
  * can be found in the [github release archive](https://github.com/sni/procgraph/releases)
 
 
+## Usage
+
+Unpack the tarball from the download section and run the binary:
+
+    %> ./procgraph
+
+On OSX you just need to start the application.
+
 ## Source Installation
 
 ### Requirements
@@ -32,9 +40,9 @@ Use these stable binary releases if in doubt. Source installations are available
 Currently only linux and osx is supported because top is used to gather the required
 data.
 
- * linux / osx
- * node-webkit
- * npm
+ * Linux / OSX
+ * Node-Webkit
+ * NPM
 
 ### Install dependencies
 
@@ -50,7 +58,7 @@ Run with node-webkit
 
     %> <path to node-webkit>/nw .
 
-On osx the nw binary is called 'node-webkit'.
+On OSX the nw binary is called 'node-webkit'.
 
     %> /Applications/node-webkit-v0.8.6-osx-ia32/Contents/MacOS/node-webkit .
 
