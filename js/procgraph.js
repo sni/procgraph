@@ -475,7 +475,7 @@ function startGraphing(pid, filter, graphOnly) {
                    .css({top: item.pageY+5, left: item.pageX+5})
                    .fadeIn(200);
     } else {
-      $("#tooltip").hide();
+      $("#tooltip").stop(true).hide();
     }
   });
 
