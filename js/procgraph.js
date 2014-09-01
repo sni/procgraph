@@ -808,6 +808,7 @@ function setupLegendEvents() {
 }
 
 function reducePoints(listIn, num) {
+  if(listIn == undefined) { return([]); }
   var listOut = [listIn[0]];
   var sumA = 0, sumB = 0, count = 0;
   for(var i=1, len=listIn.length; i<len; i++) {
