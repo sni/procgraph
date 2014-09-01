@@ -767,9 +767,8 @@ function setupLegendEvents() {
     graphVisibility[this.nextSibling.innerHTML] = !graphVisibility[this.nextSibling.innerHTML];
     drawVisibleSeries();
     adjustCpuAxisMaxValue();
-    if(redrawRequired) {
-      drawVisibleSeries();
-    }
+    redrawRequired = true;
+    drawVisibleSeries();
   }).addClass("clickable");
   $('TD.legendLabel').css({paddingLeft: "5px"});
 
@@ -787,6 +786,10 @@ function setupLegendEvents() {
     plot.getOptions().legend.margin = [old[0]-deltaX, old[1]+deltaY];
     plot.setupGrid();
     setupLegendEvents();
+  };
+  document.body.ondragover = function(e) {
+    e.preventDefault();
+    return false;
   };
 }
 
