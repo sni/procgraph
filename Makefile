@@ -38,14 +38,23 @@ pkg-osx: $(NWFILE)
 	rsync -a $(NWFILE) $(APPNAME)/Contents/Resources/app.nw
 	cat resources/Info.plist | sed -e 's/###VERSION###/$(VERSION)/' | sed -e 's/###GITREF###/$(GITREF)/' > $(APPNAME)/Contents/Info.plist
 	cp resources/nw.icns $(APPNAME)/Contents/Resources/nw.icns
-	mv $(APPNAME) $(APPNAME)-$(VERSION)
-	mkdir $(APPNAME)
-	cp -rp $(APPNAME)-$(VERSION) $(APPNAME)
-	zip -9 -q -r $(APPNAME)-$(VERSION)-osx.zip $(APPNAME)
-	rm -rf $(APPNAME)
+	mkdir osx-pkg
+	mv $(APPNAME) osx-pkg/ProcGraph
+	# https://github.com/andreyvit/yoursway-create-dmg/
+	./resources/create-dmg \
+		--volname "$(APPNAME)-$(VERSION)" \
+		--background resources/bg.png \
+		--window-pos 300 200 \
+		--window-size 628 288 \
+		--icon-size 128 \
+		--icon "ProcGraph" 100 135 \
+		--app-drop-link 520 135 \
+		--no-internet-enable \
+		"$(APPNAME)-$(VERSION).dmg" \
+		osx-pkg
 
 clean:
-	rm -rf tmp/ $(APPNAME) $(APPNAME).* $(APPNAME)-* $(APPFILE)/
+	rm -rf tmp/ $(APPNAME) $(APPNAME).* $(APPNAME)-* $(APPFILE)/ *.dmg osx-pkg
 
 $(NWFILE): pack
 
