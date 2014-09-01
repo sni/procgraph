@@ -6,14 +6,14 @@ Proc Graph plots resource usage of linux / osx process(es) based on top data.
 
 ## Features
 
- * plots resource usage
+ * plots resource usage (regular expression filter possible)
  * graph supports zooming and draggable legend
  * remote host support via ssh (keys only)
  * import / export gathered data in json format
 
 ## Downloads
 
-Use these stable binary releases if in doubt. Source installations are available for developers.
+Use these stable binary releases if in doubt. Source installations are available below for developers.
 
 * **v0.3.0**
 
@@ -24,7 +24,9 @@ Use these stable binary releases if in doubt. Source installations are available
 
  * can be found in the [github release archive](https://github.com/sni/procgraph/releases)
 
-## Requirements
+## Source Installation
+
+### Requirements
 
 Currently only linux and osx is supported because top is used to gather the required
 data.
@@ -33,7 +35,8 @@ data.
  * node-webkit
  * npm
 
-## Source Installation
+
+### Install dependencies
 
 Install bootstrap and jquery via npm:
 
@@ -41,7 +44,7 @@ Install bootstrap and jquery via npm:
     %> cd procgraph
     %> npm install
 
-## Usage
+### Usage
 
 Run with node-webkit
 
