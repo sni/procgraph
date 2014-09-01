@@ -11,8 +11,13 @@ VERSION=$(shell grep version package.json | awk '{print $$2}' | tr -d '"' | tr -
 GITREF=$(shell git log -1 --no-color --pretty=format:%h)
 NWFILE=$(APPNAME)-$(VERSION).nw
 APPFILE=$(APPNAME)-$(VERSION).$(OS).$(SYSTEM)
+ifeq ($(shell uname -s),Darwin)
+  DEFAULTARGET=pkg-osx
+else
+  DEFAULTARGET=pkg-linux
+endif
 
-build: pkg-linux
+build: $(DEFAULTARGET)
 
 pkg-linux: $(NWFILE)
 	@[ "x$(NWDIR)" != "x" ] || { echo; echo "could not find nw in path! cannot continue build"; echo; exit 1; }
