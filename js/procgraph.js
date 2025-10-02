@@ -74,6 +74,13 @@ function init() {
     this.close(true);
   });
 
+  $("#restartbtn").click(function() {
+    $("#stopbtn").trigger("click");
+    $("#restartbtn").trigger("blur");
+    setTimeout(function() {
+      $("#playbtn").trigger("click");
+    }, 200);
+  });
   $("#stopbtn").click(function() {
     if(topChild) { console.log("stoping "+topChild.pid); topChild.kill(); topChild = false; }
     $("#stopbtn").addClass('active');
