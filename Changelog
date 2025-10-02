@@ -1,5 +1,8 @@
 Changelog for procgraph
 
+next:
+        - update jquery to 3.7.1
+
 0.3.1   Mon Sep  1 16:52:12 CEST 2014
         - osx builds create dmg files
         - fixed memory axis not updated
